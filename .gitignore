@@ -25,6 +25,7 @@ __pycache__/
 env/
 venv/
 dist/
+release-artifacts/
 
 # OS / Editor
 Thumbs.db
