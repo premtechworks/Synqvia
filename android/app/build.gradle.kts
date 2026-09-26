@@ -36,7 +36,7 @@ android {
 
       val keystorePath = System.getenv("KEYSTORE_PATH")
         ?: keystoreProperties.getProperty("storeFile")
-        ?: "${rootDir}/my-upload-key.jks"
+        ?: "${rootDir}/synqvia-release.jks"
 
       val resolvedKeystoreFile = if (File(keystorePath).isAbsolute) {
         file(keystorePath)
@@ -49,7 +49,7 @@ android {
         ?: keystoreProperties.getProperty("storePassword")
       keyAlias = System.getenv("KEY_ALIAS")
         ?: keystoreProperties.getProperty("keyAlias")
-        ?: "upload"
+        ?: "synqvia"
       keyPassword = System.getenv("KEY_PASSWORD")
         ?: keystoreProperties.getProperty("keyPassword")
         ?: storePassword
