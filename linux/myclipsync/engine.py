@@ -43,13 +43,16 @@ class SyncEngine:
         if self.bt is not None:
             self.bt.queue_send(msg)
 
-    def _send_ack(self, for_id: str):
+    def _send_ack(self, for_id: str, target_peer_id: str | None = None):
         if self.bt is None:
             return
         try:
             send = getattr(self.bt, "send_msg", None) or getattr(self.bt, "_try_send", None)
             if send is not None:
-                send(protocol.make_ack(self.device_id, for_id))
+                try:
+                    send(protocol.make_ack(self.device_id, for_id), target_peer_id=target_peer_id)
+                except TypeError:
+                    send(protocol.make_ack(self.device_id, for_id))
         except Exception:
             pass
 
@@ -68,8 +71,10 @@ class SyncEngine:
             return
         t = msg.get("type")
         if t == "hello":
-            peer = msg.get("name", msg.get("src", ""))
-            self.on_status(True, str(peer))
+            # Status is managed centrally by BtServer for multi-device
+            if not getattr(self.bt, "get_connected_clients", None):
+                peer = msg.get("name", msg.get("src", ""))
+                self.on_status(True, str(peer))
             return
         if t == "ack":
             if self.bt is not None:
@@ -83,29 +88,29 @@ class SyncEngine:
         if t != "clip":
             return
         mid = msg.get("id", "")
+        rts, rsrc = msg.get("ts", 0), msg.get("src", "")
         if not self._mark_seen(mid):
             # duplicate (e.g. retransmit): ack again, don't apply
-            self._send_ack(mid)
+            self._send_ack(mid, target_peer_id=rsrc)
             return
         # Restart-proof dedup: DB outlives in-memory seen cache.
         try:
             if hasattr(self.history, "exists") and self.history.exists(mid):
-                self._send_ack(mid)
+                self._send_ack(mid, target_peer_id=rsrc)
                 return
         except Exception:
             pass
         text = msg.get("text", "")
         if msg.get("mime", "text/plain") != "text/plain":
             # Unknown mime: ack per spec but ignore (no apply, no history).
-            self._send_ack(mid)
+            self._send_ack(mid, target_peer_id=rsrc)
             return
-        rts, rsrc = msg.get("ts", 0), msg.get("src", "")
         try:
             inserted = self.history.insert(mid, text, rts, rsrc, "remote")
         except Exception:
             inserted = True
         if inserted is False:
-            self._send_ack(mid)
+            self._send_ack(mid, target_peer_id=rsrc)
             return
         # LWW: near-simultaneous local edit?
         with self._lock:
@@ -124,7 +129,7 @@ class SyncEngine:
                         self.history.mark_loser(mid)
                 except Exception:
                     pass
-                self._send_ack(mid)
+                self._send_ack(mid, target_peer_id=rsrc)
                 return
             else:
                 # remote wins: local loser stays in history flagged, not rebroadcast
@@ -138,7 +143,16 @@ class SyncEngine:
             self.clipboard.apply_remote(text)
         except Exception:
             pass
-        self._send_ack(mid)
+        self._send_ack(mid, target_peer_id=rsrc)
+
+        # Relay to other connected Bluetooth devices (multi-device sync)
+        if self.bt is not None:
+            try:
+                relay = getattr(self.bt, "broadcast_clip", None)
+                if relay is not None:
+                    relay(msg, exclude_peer_id=rsrc)
+            except Exception:
+                pass
 
     def add_status_listener(self, cb):
         """Multiple UI consumers (tray + window) can all listen (KDE-style)."""

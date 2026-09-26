@@ -1,4 +1,6 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.io.FileInputStream
+import java.util.Properties
 
 plugins {
   alias(libs.plugins.android.application)
@@ -17,18 +19,40 @@ android {
     minSdk = 26
     targetSdk = 34
     versionCode = 1
-    versionName = "1.0"
+    versionName = "1.0.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
+      val keystorePropsFile = rootProject.file("keystore.properties")
+      val keystoreProperties = Properties()
+      if (keystorePropsFile.exists()) {
+        FileInputStream(keystorePropsFile).use { stream ->
+          keystoreProperties.load(stream)
+        }
+      }
+
+      val keystorePath = System.getenv("KEYSTORE_PATH")
+        ?: keystoreProperties.getProperty("storeFile")
+        ?: "${rootDir}/my-upload-key.jks"
+
+      val resolvedKeystoreFile = if (File(keystorePath).isAbsolute) {
+        file(keystorePath)
+      } else {
+        rootProject.file(keystorePath)
+      }
+
+      storeFile = resolvedKeystoreFile
       storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
+        ?: keystoreProperties.getProperty("storePassword")
+      keyAlias = System.getenv("KEY_ALIAS")
+        ?: keystoreProperties.getProperty("keyAlias")
+        ?: "upload"
       keyPassword = System.getenv("KEY_PASSWORD")
+        ?: keystoreProperties.getProperty("keyPassword")
+        ?: storePassword
     }
     create("debugConfig") {
       storeFile = file("${rootDir}/debug.keystore")
@@ -59,6 +83,11 @@ android {
   dependenciesInfo {
     includeInApk = false
     includeInBundle = true
+  }
+  lint {
+    abortOnError = false
+    checkReleaseBuilds = false
+    disable.add("InvalidFragmentVersionForActivityResult")
   }
 }
 

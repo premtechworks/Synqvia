@@ -11,8 +11,9 @@ captures/
 .externalNativeBuild/
 .cxx/
 .env
-debug.keystore
 *.keystore
+*.jks
+keystore.properties
 
 # Python
 __pycache__/

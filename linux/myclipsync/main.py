@@ -15,6 +15,7 @@ import logging
 import os
 import socket
 import sys
+import time
 
 APP_DIR = os.path.join(os.path.expanduser("~"), ".config", "myclipsync")
 CONFIG_PATH = os.path.join(APP_DIR, "config.json")
@@ -22,6 +23,7 @@ DB_PATH = os.path.join(APP_DIR, "history.db")
 LOG_PATH = os.path.join(APP_DIR, "myclipsync.log")
 LOCK_PATH = os.path.join(APP_DIR, "myclipsync.lock")
 SPOOL_DIR = os.path.join(APP_DIR, "spool")
+STATUS_PATH = os.path.join(APP_DIR, "status.json")
 
 DEFAULTS = {"device_name": socket.gethostname(), "history_cap": 500, "channel": 1}
 
@@ -176,6 +178,16 @@ def main():
 
     engine = SyncEngine(device_id, history, clipboard, None)  # bt wired below
     engine_holder["engine"] = engine
+
+    def _save_status(connected: bool, peer: str):
+        try:
+            with open(STATUS_PATH + ".tmp", "w") as f:
+                json.dump({"connected": connected, "peer": peer, "ts": time.time()}, f)
+            os.replace(STATUS_PATH + ".tmp", STATUS_PATH)
+        except Exception:
+            pass
+
+    engine.add_status_listener(_save_status)
 
     bt = BtServer(device_id, cfg["device_name"], on_clip, engine.on_status,
                   channel=cfg.get("channel", 1))

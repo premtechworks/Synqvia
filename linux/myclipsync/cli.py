@@ -56,9 +56,21 @@ def cmd_status(args):
             db.close()
         except Exception:
             pass
+    status_file = os.path.join(APP_DIR, "status.json")
+    bt_status = "Offline (listening)"
+    if os.path.exists(status_file):
+        try:
+            with open(status_file) as f:
+                st = json.load(f)
+            if time.time() - st.get("ts", 0) < 60:
+                peer = st.get("peer", "")
+                bt_status = f"Connected ({peer})" if st.get("connected") else f"Offline ({peer or 'listening'})"
+        except Exception:
+            pass
+
     out = {"device": cfg.get("device_name"), "channel": cfg.get("channel"),
            "history_cap": cfg.get("history_cap"), "history_rows": n,
-           "log_recent": logging_alive, "db": DB_PATH}
+           "log_recent": logging_alive, "bt_status": bt_status, "db": DB_PATH}
     if getattr(args, "json", False):
         print(json.dumps(out, indent=2))
     else:
@@ -67,8 +79,7 @@ def cmd_status(args):
         print(f"history:     {out['history_rows']} rows (cap {out['history_cap']})")
         print(f"db:          {out['db']}")
         print(f"log recent:  {'yes' if out['log_recent'] else 'no (<120s activity)'}")
-        print("BT server:   run the GUI/daemon (`myclipsync --show`) to listen; "
-              "pair with bluetoothctl first.")
+        print(f"BT server:   {out['bt_status']}")
 
 
 def cmd_history(args):
