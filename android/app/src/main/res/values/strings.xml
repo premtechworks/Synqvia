@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">MyClipSync</string>
+    <string name="title_sync">Sync</string>
+    <string name="title_history">History</string>
+    <string name="title_setup">Setup</string>
+    <string name="title_settings">Settings</string>
+    <string name="accessibility_service_description">Enables MyClipSync to capture selected text and synchronize clipboards in background when Android limits background clipboard observation.</string>
+    <string name="qs_tile_label">Sync to PC</string>
+    <string name="action_send_to_pc">Send to PC</string>
+    <string name="process_text_label">Send to PC via MyClipSync</string>
+    <string name="ime_name">MyClipSync Keyboard</string>
+    <string name="ime_subtype_clipboard">Clipboard History</string>
+    <string name="ime_switch_keyboard">Switch keyboard</string>
+    <string name="ime_no_clips">No clips in clipboard history</string>
+    <string name="ime_tap_to_paste">Tap to paste, long press for options</string>
+    <string name="ime_pinned">Pinned</string>
+    <string name="ime_unpinned">Unpinned</string>
+    <string name="ime_delete">Delete</string>
+    <string name="ime_send_to_pc">Send to PC</string>
+    <string name="ime_copy_to_clip">Copy to Clipboard</string>
+    <string name="ime_sensitive_masked">•••••••• (Sensitive Content)</string>
+    <string name="ime_pasted">Pasted</string>
+    <string name="ime_copied">Copied to clipboard</string>
+    <string name="setup_ime_title">Clipboard Keyboard (IME)</string>
+    <string name="setup_ime_desc">Enable MyClipSync as an Input Method to capture clipboard seamlessly and paste from history.</string>
+</resources>

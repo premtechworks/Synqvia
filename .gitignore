@@ -1,0 +1,31 @@
+# Android & Gradle
+*.iml
+.gradle/
+.kotlin/
+local.properties
+.idea/
+.DS_Store
+build/
+*/build/
+captures/
+.externalNativeBuild/
+.cxx/
+.env
+debug.keystore
+*.keystore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+.venv/
+env/
+venv/
+dist/
+
+# OS / Editor
+Thumbs.db
+*.swp
+*~
