@@ -1,7 +1,7 @@
 """Framing + LWW unit tests (no Bluetooth hardware needed)."""
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "linux"))
-from myclipsync import protocol
+from synqvia import protocol
 
 
 def test_roundtrip():
@@ -33,7 +33,7 @@ def test_lww():
 
 
 def test_suppress_echo():
-    from myclipsync.clipboard import ClipboardMonitor
+    from synqvia.clipboard import ClipboardMonitor
     sent = []
     mon = ClipboardMonitor(sent.append)
     mon.apply_remote("from-phone")   # writes clipboard, arms suppress
@@ -44,7 +44,7 @@ def test_suppress_echo():
 
 
 def test_dedup_ids():
-    from myclipsync.engine import SyncEngine
+    from synqvia.engine import SyncEngine
     seen = set()
     e = SyncEngine.__new__(SyncEngine)
     import collections, threading

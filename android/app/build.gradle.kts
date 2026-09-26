@@ -11,11 +11,11 @@ plugins {
 }
 
 android {
-  namespace = "com.example"
+  namespace = "com.github.premtechworks.synqvia"
   compileSdk = 36
 
   defaultConfig {
-    applicationId = "com.aistudio.myclipsync.qkzrvw"
+    applicationId = "com.github.premtechworks.synqvia"
     minSdk = 26
     targetSdk = 34
     versionCode = 1

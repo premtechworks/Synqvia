@@ -1,7 +1,7 @@
-# MyClipSync — Detailed Project Report
+# Synqvia — Detailed Project Report
 **Bluetooth Clipboard Sync: Linux Mint Xfce ↔ Android | Text + History Only v1 + IME Keyboard**
 
-> Sources inspected: `README.md` (rewritten 2026-09-26 for IME), `PROTOCOL.md`, `TEST_PLAN.md`, `linux/myclipsync/*.py` (~1324 LOC, 10 files), `android/app/src/main/java/com/example/**/*.kt` (`clipboard/ClipboardCaptureManager.kt` 237 + `SensitiveClassifier.kt` 27 + `ime/MyClipSyncImeService.kt` 254 + `ime/ClipImeAdapter.kt` 132 + `service/ClipSyncService.kt` 486 + `protocol/Protocol.kt` 222 + `data/` 279 + Compose UI), `AndroidManifest.xml`, `res/layout/ime_clipboard_view.xml`, `res/layout/item_ime_clip.xml`, `res/xml/method.xml`, `res/values/strings.xml`, `linux/install.sh`, `tests/test_protocol.py`, `android/app/src/test/java/com/example/*.kt` (605 LOC tests).
+> Sources inspected: `README.md` (rewritten 2026-09-26 for IME), `PROTOCOL.md`, `TEST_PLAN.md`, `linux/synqvia/*.py` (~1324 LOC, 10 files), `android/app/src/main/java/com/example/**/*.kt` (`clipboard/ClipboardCaptureManager.kt` 237 + `SensitiveClassifier.kt` 27 + `ime/SynqviaImeService.kt` 254 + `ime/ClipImeAdapter.kt` 132 + `service/ClipSyncService.kt` 486 + `protocol/Protocol.kt` 222 + `data/` 279 + Compose UI), `AndroidManifest.xml`, `res/layout/ime_clipboard_view.xml`, `res/layout/item_ime_clip.xml`, `res/xml/method.xml`, `res/values/strings.xml`, `linux/install.sh`, `tests/test_protocol.py`, `android/app/src/test/java/com/example/*.kt` (605 LOC tests).
 >
 > **Recent changes incorporated (commit `af42300`, 2026-09-26 — "Add IME functionality and related resources" + root `README.md` rewrite):** Gboard-like IME keyboard as primary capture/paste path, shared `ClipboardCaptureManager` pipeline, `SensitiveClassifier` (`EXTRA_IS_SENSITIVE`), Room v1→v2 (`pinned`, `sensitive`), `SyncPreferences.imeExpiryHours`, `AppContainer.clipboardCaptureManager`, `ClipSyncService` refactor to delegate to manager, `SetupScreen` IME card, `MainViewModel` `PINNED` filter + pin/expiry APIs, `TrampolineActivity` dual-path via manager, `recyclerview` dep, `targetSdk 36→34`, Gradle wrapper 9.3.1, 3 new Robolectric test classes.
 
@@ -9,39 +9,39 @@
 
 ## 1. Executive Summary
 
-**MyClipSync** is an offline-first, Bluetooth Classic (RFCOMM/SPP) clipboard synchronizer between a Linux Mint Xfce PC and an Android phone.
+**Synqvia** is an offline-first, Bluetooth Classic (RFCOMM/SPP) clipboard synchronizer between a Linux Mint Xfce PC and an Android phone.
 
 * **No cloud, no BLE, no LAN/Wi-Fi dependency.** One persistent bidirectional RFCOMM stream.
 * **Linux = server/listener**, **Android = client/initiator** using a custom 128-bit SPP UUID.
 * **Data scope v1:** `text/plain` only + persistent history on both sides. Empty string (clear) is a valid sync event.
 * **Core differentiator vs KDE Connect:** explicit loop-prevention (`suppress-on-apply` + `seen-id` cache) + deterministic Last-Write-Wins (LWW) conflict resolution + ack/outbox reliability + graceful degradation for Android 10/14 background clipboard restrictions.
-* **New in this revision (IME overhaul):** Android now uses a **decoupled pipeline — `MyClipSyncImeService` (active IME) → `ClipboardCaptureManager` (shared) → `ClipRepository` (Room) → `ClipSyncService` (transport)**. The active keyboard is the *primary* automatic capture + one-tap paste path (sanctioned clipboard access on Android 10+ where background reads are blocked); all legacy paths (PROCESS_TEXT, Share, QS Tile, notif action, Accessibility cache, Trampoline) are preserved as fallbacks and normalized through the same manager.
+* **New in this revision (IME overhaul):** Android now uses a **decoupled pipeline — `SynqviaImeService` (active IME) → `ClipboardCaptureManager` (shared) → `ClipRepository` (Room) → `ClipSyncService` (transport)**. The active keyboard is the *primary* automatic capture + one-tap paste path (sanctioned clipboard access on Android 10+ where background reads are blocked); all legacy paths (PROCESS_TEXT, Share, QS Tile, notif action, Accessibility cache, Trampoline) are preserved as fallbacks and normalized through the same manager.
 
 **Repo layout (updated):**
 
 ```
-myclipsync/
+synqvia/
   PROTOCOL.md          # wire spec v1 (normative, unchanged)
   README.md            # rewritten: IME architecture, enable-keyboard flow, pathways, tests
   REPORT.md            # this file
   TEST_PLAN.md         # auto + manual + reconnect tests (pre-IME text; see §10 for new tests)
   linux/               # Python daemon + GTK UI + CLI (unchanged in this revision)
     install.sh
-    myclipsync.desktop
+    synqvia.desktop
     requirements.txt
-    myclipsync/
+    synqvia/
       protocol.py  engine.py  bt.py  clipboard.py
       history.py  main.py  window.py  tray.py  cli.py
-  android/             # Kotlin app (namespace com.example, applicationId com.aistudio.myclipsync.qkzrvw)
+  android/             # Kotlin app (namespace com.github.premtechworks.synqvia, applicationId com.github.premtechworks.synqvia)
     app/src/main/java/com/example/
       clipboard/ClipboardCaptureManager.kt  SensitiveClassifier.kt   # NEW shared pipeline
-      ime/MyClipSyncImeService.kt  ClipImeAdapter.kt                # NEW Gboard-like keyboard
+      ime/SynqviaImeService.kt  ClipImeAdapter.kt                # NEW Gboard-like keyboard
       protocol/Protocol.kt
       data/ClipEntity.kt  ClipDao.kt  ClipRepository.kt  AppDatabase.kt  SyncPreferences.kt
       di/AppContainer.kt
       service/ClipSyncService.kt  ClipAccessService.kt  SelectionCache.kt  SyncTileService.kt
       ui/MainViewModel.kt  ui/screens/SetupScreen.kt (+ Dashboard/History/Settings, Compose)
-      MainActivity.kt  MyClipSyncApp.kt  ShareActivity.kt  ProcessTextActivity.kt  TrampolineActivity.kt
+      MainActivity.kt  SynqviaApp.kt  ShareActivity.kt  ProcessTextActivity.kt  TrampolineActivity.kt
     app/src/main/res/
       layout/ime_clipboard_view.xml  layout/item_ime_clip.xml       # NEW
       xml/method.xml                                                 # NEW IME registration
@@ -53,7 +53,7 @@ myclipsync/
   tests/test_protocol.py   # Linux pytest (unchanged)
 ```
 
-> Correction to previous report: Android package is `com.example` (not `com.myclipsync`); Linux LOC ~1324 (not 1448). Android is Compose + Room + foreground-service, not the old `SetupActivity/ShareActivity`-only list.
+> Correction to previous report: Android package is `com.github.premtechworks.synqvia` (not `com.github.premtechworks.synqvia`); Linux LOC ~1324 (not 1448). Android is Compose + Room + foreground-service, not the old `SetupActivity/ShareActivity`-only list.
 
 ---
 
@@ -67,7 +67,7 @@ Users working across Linux PC + Android constantly retype URLs, OTPs, notes, cod
 
 | ID | Goal | Success Metric |
 |----|------|----------------|
-| G1 | Bidirectional text sync <2s when connected | `myclipsync-cli send "hi"` appears on Android + clipboard in ~1s |
+| G1 | Bidirectional text sync <2s when connected | `synqvia-cli send "hi"` appears on Android + clipboard in ~1s |
 | G2 | No ping-pong / duplication | Exactly 1x `clip` + 1x `ack`, silent for 10s after one copy |
 | G3 | Offline resilience | Copies made offline flush on reconnect in `ts` order, no loss/dup |
 | G4 | History persistence + search + re-broadcast | 500-row default cap, SQLite/Room, tap-to-resend |
@@ -89,13 +89,13 @@ Users working across Linux PC + Android constantly retype URLs, OTPs, notes, cod
 1. **Linux-first dev (Mint Xfce)** — copies terminal output / code to phone.
 2. **Privacy-conscious user** — refuses cloud clipboard.
 3. **Field/offline user** — no Wi-Fi, only BT.
-4. **(new) IME user** — keeps MyClipSync Keyboard enabled, pastes from history without app-switching.
+4. **(new) IME user** — keeps Synqvia Keyboard enabled, pastes from history without app-switching.
 
 ### 2.5 User Stories
 
 * As a PC user, I copy text → it appears in Android app + Android system clipboard automatically.
 * As an Android user, I select text → `Send to PC` → it appears in Linux window + Linux clipboard.
-* **(new)** As an Android user with MyClipSync Keyboard active, I copy anywhere → it is auto-captured; I open any text field → tap a card → it pastes instantly; I pin keepers, long-press for Pin/Send-to-PC/Copy/Delete.
+* **(new)** As an Android user with Synqvia Keyboard active, I copy anywhere → it is auto-captured; I open any text field → tap a card → it pastes instantly; I pin keepers, long-press for Pin/Send-to-PC/Copy/Delete.
 * As a user, I go offline, copy on both sides, reconnect → both converge deterministically, loser text still in history.
 * As a user, I click history → it re-copies + rebroadcasts.
 * As a user, I reboot both devices → sync resumes without manual start.
@@ -104,7 +104,7 @@ Users working across Linux PC + Android constantly retype URLs, OTPs, notes, cod
 
 | ID | Requirement | Implementation |
 |----|-------------|----------------|
-| FR1 | RFCOMM server on Linux, client on Android | `linux/myclipsync/bt.py:20`, `service/ClipSyncService.kt:157` |
+| FR1 | RFCOMM server on Linux, client on Android | `linux/synqvia/bt.py:20`, `service/ClipSyncService.kt:157` |
 | FR2 | 4-byte BE length-prefixed JSON framing, 2MiB max | `protocol.py:48`, `protocol/Protocol.kt:143` |
 | FR3 | `hello/clip/ack/bye` schema, `v=1` | `protocol.py:27-45`, `PROTOCOL.md:52-90` |
 | FR4 | Suppress-on-apply loop prevention | `clipboard.py:41`, `engine.py:136`, **`clipboard/ClipboardCaptureManager.kt:59,187`** (moved out of service) |
@@ -122,7 +122,7 @@ Users working across Linux PC + Android constantly retype URLs, OTPs, notes, cod
 
 * **Reliability:** `START_STICKY` service, 2/5/10/30s backoff, autostart on both OSes.
 * **Performance:** 4096B recv chunks, incremental framer, WAL SQLite, prune by `(ts,rowid)`; IME list capped 50 via `DiffUtil`, `pinned DESC, ts DESC`.
-* **Privacy:** No network socket, no analytics, local DB only: `~/.config/myclipsync/history.db`, Room `clips.db`. Sensitive clips masked in IME UI, flagged via `EXTRA_IS_SENSITIVE` on Tiramisu+.
+* **Privacy:** No network socket, no analytics, local DB only: `~/.config/synqvia/history.db`, Room `clips.db`. Sensitive clips masked in IME UI, flagged via `EXTRA_IS_SENSITIVE` on Tiramisu+.
 * **Robustness:** Oversize frame → drop + log; invalid JSON → ignore; version mismatch → `bye/version` + close. Manager guards null/blank/non-`text/*` MIME, `SecurityException` (background gate), dead IPC.
 * **Maintainability:** Protocol mirrors must stay identical — `protocol.py` ↔ `protocol/Protocol.kt`.
 
@@ -133,7 +133,7 @@ Users working across Linux PC + Android constantly retype URLs, OTPs, notes, cod
 * Android 13+: `ClipDescription.EXTRA_IS_SENSITIVE` — now honored and propagated.
 * Android 14+: background apps don't even get change callback.
 * OEMs kill FG services → battery-optimization allowlist + autostart deep-links required (known limitation).
-* Mitigations built (updated): **active IME (`MyClipSyncImeService`) is now the sanctioned primary** (reads on `onStartInputView` + `onPrimaryClipChanged`, pastes via `InputConnection`); Accessibility selection cache + freshness watermark, `TrampolineActivity` focus-grab, `ACTION_INJECT` explicit handoff, Seamless Setup screen (now with IME card) remain as fallbacks.
+* Mitigations built (updated): **active IME (`SynqviaImeService`) is now the sanctioned primary** (reads on `onStartInputView` + `onPrimaryClipChanged`, pastes via `InputConnection`); Accessibility selection cache + freshness watermark, `TrampolineActivity` focus-grab, `ACTION_INJECT` explicit handoff, Seamless Setup screen (now with IME card) remain as fallbacks.
 
 ---
 
@@ -160,18 +160,18 @@ Users working across Linux PC + Android constantly retype URLs, OTPs, notes, cod
 
 **MVP acceptance (from `TEST_PLAN.md` + `README.md` §6):**
 
-1. `myclipsync-cli send "hi"` → Android in ~1s.
+1. `synqvia-cli send "hi"` → Android in ~1s.
 2. Share → Send to PC → Linux window/CLI + system clipboard.
 3. No ping-pong for 10s, 1 clip + 1 ack in logs.
 4. Simultaneous offline copies → converge to larger `ts`, loser preserved.
 5. BT kill → `Offline (listening)` / `Offline — retrying` → auto-reconnect ≤30s.
-6. **(new)** Enable MyClipSync Keyboard → copy in Chrome → 1 Room row + Linux receipt, no echo; tap card → `commitText` paste; pin persists past 1h expiry; sensitive clip masked in IME.
+6. **(new)** Enable Synqvia Keyboard → copy in Chrome → 1 Room row + Linux receipt, no echo; tap card → `commitText` paste; pin persists past 1h expiry; sensitive clip masked in IME.
 
 ---
 
 ## 4. Feature List
 
-### 4.1 Linux (`linux/myclipsync/` — unchanged in this revision)
+### 4.1 Linux (`linux/synqvia/` — unchanged in this revision)
 
 | Feature | File | Notes |
 |---------|------|-------|
@@ -187,22 +187,22 @@ Users working across Linux PC + Android constantly retype URLs, OTPs, notes, cod
 | CLI: `status [--json] / history -n -q / send / clear / log -n` via DB + `spool/*.json` | `cli.py:126` | Works daemon-down |
 | Installer: `apt` deps, pip/user fallback, `~/.config/autostart` + `~/.local/share/applications`, `/usr/local/lib` + `/usr/local/bin` shims | `install.sh` | |
 
-### 4.2 Android (`com.example` — heavily changed)
+### 4.2 Android (`com.github.premtechworks.synqvia` — heavily changed)
 
 | Feature | File | Notes (NEW = this revision) |
 |---------|------|------------------------------|
 | **NEW shared pipeline: `ClipboardCaptureManager`** — `captureLocalClip` (suppress→coalesce→persist→outbound callback), `handlePrimaryClipChanged` (MIME/text/* gate, blank ignore, `SecurityException` safe), `applyRemoteClip` + `copyToClipboardWithoutBroadcast` (arm-suppress-then-write, `EXTRA_IS_SENSITIVE` on API33+), `armSuppression/isSuppressed/isRecentDuplicate`, `OutboundClipListener`, `getLastLocalClip` | `clipboard/ClipboardCaptureManager.kt` | Single source of truth for echo/LWW inputs; injected with IO/Main dispatchers for testability |
 | **NEW `SensitiveClassifier`** — `isSensitive(ClipData/ClipDescription)` via `description.extras` on Tiramisu+ | `clipboard/SensitiveClassifier.kt` | Persisted as `ClipEntity.sensitive`, masked in IME |
-| **NEW IME service** — `onCreate` (DI + `OnPrimaryClipChangedListener`), `onCreateInputView` (inflate `ime_clipboard_view`, switch/close buttons, `ClipImeAdapter`), `onStartInputView` (sanctioned foreground read + `getImeClips` collect, limit 50), `pasteClip` (`commitText`, fallback copy+toast), `togglePin/deleteClip`, long-press `PopupMenu` (Paste/Pin-Copy-Send-Delete), `switchKeyboard` (prev method or picker) | `ime/MyClipSyncImeService.kt` | `BIND_INPUT_METHOD`, `method.xml` subtype `en_US/keyboard` |
+| **NEW IME service** — `onCreate` (DI + `OnPrimaryClipChangedListener`), `onCreateInputView` (inflate `ime_clipboard_view`, switch/close buttons, `ClipImeAdapter`), `onStartInputView` (sanctioned foreground read + `getImeClips` collect, limit 50), `pasteClip` (`commitText`, fallback copy+toast), `togglePin/deleteClip`, long-press `PopupMenu` (Paste/Pin-Copy-Send-Delete), `switchKeyboard` (prev method or picker) | `ime/SynqviaImeService.kt` | `BIND_INPUT_METHOD`, `method.xml` subtype `en_US/keyboard` |
 | **NEW `ClipImeAdapter`** — `DiffUtil` RecyclerView, sensitive masking, PC/Local badge, relative time (Just now/Xm/Xh/MMM d), pin filled/outline + delete buttons, click/long-press dispatch | `ime/ClipImeAdapter.kt` | Backed by `item_ime_clip.xml` |
 | FG service (refactored): **removed inline `suppressNextHash/lastLocalClip/processLocalClip`**; now `clipboardCaptureManager.setOutboundClipListener{queueAndSendClip}` on create (cleared on destroy), `clipboardListener/ACTION_INJECT/ACTION_SYNC_NOW` delegate to manager, LWW reads `manager.getLastLocalClip()`, remote apply via `manager.applyRemoteClip()` | `service/ClipSyncService.kt:59,83,99,107,337,360,464` | `connectedDevice\|dataSync` types, UUID+channel fallback, 2/5/10/30s backoff, `cancelDiscovery`, FG notif + `Sync to PC` action |
 | Room v2: `ClipEntity.pinned/sensitive` (default 0), `ClipDao.getImeClips(pinned OR ts>threshold, pinned DESC, ts DESC, LIMIT)` + `getClipById/setPinned`, `AppDatabase v2 + MIGRATION_1_2`, `ClipRepository.getImeClips/getClipById/setPinned`, `SyncStats` combine | `data/ClipEntity.kt:32, `data/ClipDao.kt:62, `data/AppDatabase.kt:10, `data/ClipRepository.kt:79` | Sync history preserves expired IME clips (cap 500) |
 | Prefs + DI: `SyncPreferences.imeExpiryHours` (default 1, 0=never), `AppContainer.clipboardCaptureManager` singleton | `data/SyncPreferences.kt:67`, `di/AppContainer.kt:35` | `MainViewModel.imeExpiryHours` StateFlow + `updateImeExpiryHours`, `ClipFilter.PINNED`, `togglePin` |
 | Setup: **new card #5 "Clipboard Keyboard (IME)"** (checks `enabledInputMethodList`, deep-links `ACTION_INPUT_METHOD_SETTINGS`); one-tap card renumbered #6 | `ui/screens/SetupScreen.kt:204` | BT/notif/battery/a11y cards unchanged |
 | `TrampolineActivity` dual-path: now also `captureManager.captureLocalClip(text)` on IO **plus** legacy `ACTION_INJECT` (redundant by design for reliability) | `TrampolineActivity.kt:23` | Translucent, `excludeFromRecents`, `noHistory` |
-| Manifest: **new `<service .ime.MyClipSyncImeService BIND_INPUT_METHOD>`** with `android.view.InputMethod` filter + `method` meta-data | `AndroidManifest.xml:116` | Share/PROCESS_TEXT/Tile/a11y/Boot entries unchanged |
+| Manifest: **new `<service .ime.SynqviaImeService BIND_INPUT_METHOD>`** with `android.view.InputMethod` filter + `method` meta-data | `AndroidManifest.xml:116` | Share/PROCESS_TEXT/Tile/a11y/Boot entries unchanged |
 | Resources: `xml/method.xml`, `layout/ime_clipboard_view.xml` (260dp, header + RecyclerView + empty state), `layout/item_ime_clip.xml` (badge/time/pin/delete/preview), `drawable/bg_ime_card/bg_ime_header_button/ic_ime_{close,delete,empty,keyboard,pin,pin_filled}`, 15 `strings.xml` `ime_*` entries | `res/` | Dark-navy `#0A1120/#141E33`, cyan `#00E5FF` accents |
-| Build: `compileSdk 36`, `targetSdk 34` (was 36), `recyclerview:1.3.2` added, Gradle wrapper 9.3.1 + `gradlew(.bat)` added, `.env`/secrets + Firebase/AI deps retained | `app/build.gradle.kts:13,17,100`, `gradle/wrapper/` | `namespace com.example`, `applicationId com.aistudio.myclipsync.qkzrvw`, `minSdk 26` |
+| Build: `compileSdk 36`, `targetSdk 34` (was 36), `recyclerview:1.3.2` added, Gradle wrapper 9.3.1 + `gradlew(.bat)` added, `.env`/secrets + Firebase/AI deps retained | `app/build.gradle.kts:13,17,100`, `gradle/wrapper/` | `namespace com.github.premtechworks.synqvia`, `applicationId com.github.premtechworks.synqvia`, `minSdk 26` |
 | Compose UI (pre-existing, now IME-aware): Dashboard/History/Settings/Setup, `LiquidGlass` theme, `MainViewModel` search+filter+stats+logs+sync/test/resend/pin/delete/clear/save/reconnect | `ui/` | History filter now includes PINNED |
 
 ---
@@ -213,8 +213,8 @@ Users working across Linux PC + Android constantly retype URLs, OTPs, notes, cod
 
 ```bash
 cd linux && sudo bash install.sh
-myclipsync --show
-myclipsync-cli status | history | send "text" | log
+synqvia --show
+synqvia-cli status | history | send "text" | log
 ```
 
 * Deps: `python3-gi gir1.2-gtk-3.0 gir1.2-ayatanaappindicator3-0.1 bluez python3-pip libbluetooth-dev` + `pybluez PyGObject pycairo` (`requirements.txt`).
@@ -225,25 +225,25 @@ myclipsync-cli status | history | send "text" | log
 
 | Path | Purpose |
 |------|---------|
-| `~/.config/myclipsync/config.json` | `{device_name, history_cap, channel}` sanitized (channel 1-30, cap ≥0, name ≤48) |
-| `~/.config/myclipsync/history.db` | SQLite WAL |
-| `~/.config/myclipsync/myclipsync.log` | DEBUG file + INFO stderr + in-window LogHandler |
-| `~/.config/myclipsync/spool/*.json` | CLI `send` outbox flushed every 2s (`_flush_spool`) |
-| `~/.config/myclipsync/myclipsync.lock` | `fcntl` single-instance |
-| `~/.config/autostart/myclipsync.desktop` | Xfce autostart (tray-only) |
-| `~/.local/share/applications/myclipsync.desktop` | App-menu (`--show`) |
+| `~/.config/synqvia/config.json` | `{device_name, history_cap, channel}` sanitized (channel 1-30, cap ≥0, name ≤48) |
+| `~/.config/synqvia/history.db` | SQLite WAL |
+| `~/.config/synqvia/synqvia.log` | DEBUG file + INFO stderr + in-window LogHandler |
+| `~/.config/synqvia/spool/*.json` | CLI `send` outbox flushed every 2s (`_flush_spool`) |
+| `~/.config/synqvia/synqvia.lock` | `fcntl` single-instance |
+| `~/.config/autostart/synqvia.desktop` | Xfce autostart (tray-only) |
+| `~/.local/share/applications/synqvia.desktop` | App-menu (`--show`) |
 
 ### 5.3 Android Release
 
 * Open `android/` in Android Studio → `assembleDebug` → sideload, or `./gradlew :app:assembleDebug` (wrapper now 9.3.1, `gradlew`/`gradlew.bat` committed in this revision).
-* `namespace com.example`, `applicationId com.aistudio.myclipsync.qkzrvw`, `compileSdk 36`, `minSdk 26`, `targetSdk 34`, `versionCode 1`, `versionName 1.0`. Debug signing via `debug.keystore`.
-* Runtime: grant BT perms, enter PC MAC → Save+connect, accept battery-optimization prompt, complete Seamless Setup **including new IME step**: enable MyClipSync Keyboard in system Manage Keyboards → switch to it in any text field.
+* `namespace com.github.premtechworks.synqvia`, `applicationId com.github.premtechworks.synqvia`, `compileSdk 36`, `minSdk 26`, `targetSdk 34`, `versionCode 1`, `versionName 1.0`. Debug signing via `debug.keystore`.
+* Runtime: grant BT perms, enter PC MAC → Save+connect, accept battery-optimization prompt, complete Seamless Setup **including new IME step**: enable Synqvia Keyboard in system Manage Keyboards → switch to it in any text field.
 * Room auto-migrates v1→v2 (`pinned`/`sensitive` columns, default 0); no manual DB action.
 
 ### 5.4 Operations
 
-* Status everywhere: window header dot (green/red), tray tooltip/menu header, Android notif (`MyClipSync: Connected/Offline — retrying`), `cli status` (`log recent <120s` heuristic), Compose `SyncConnectionState` + `diagnosticLogs`.
-* Logs: `myclipsync-cli log -n 50`, window Log view, `adb logcat -s MyClipSync`.
+* Status everywhere: window header dot (green/red), tray tooltip/menu header, Android notif (`Synqvia: Connected/Offline — retrying`), `cli status` (`log recent <120s` heuristic), Compose `SyncConnectionState` + `diagnosticLogs`.
+* Logs: `synqvia-cli log -n 50`, window Log view, `adb logcat -s Synqvia`.
 * Backup: copy `history.db` / Room `clips.db`; no server to migrate.
 
 ---
@@ -253,18 +253,18 @@ myclipsync-cli status | history | send "text" | log
 ### 6.1 System Overview (updated)
 
 ```
-┌─ Linux Mint Xfce (Python 3 + GTK3) ───────┐    BT Classic RFCOMM    ┌─ Android (Kotlin, com.example) ─────────────┐
+┌─ Linux Mint Xfce (Python 3 + GTK3) ───────┐    BT Classic RFCOMM    ┌─ Android (Kotlin, com.github.premtechworks.synqvia) ─────────────┐
 │ ClipboardMonitor → SyncEngine → BtServer  │◄═════════════════════►│ ClipSyncService (client, transport only)    │
 │        ↕ History (SQLite)    ↕ outbox     │  7be1e1f2-...af002     │  ↕ ClipRepository (Room clips.db v2) ↕ outbox│
 │ Window + Tray (listeners)    CLI (DB)     │  4B BE len + JSON      │  ↕ ClipboardCaptureManager (shared pipeline)│
 └───────────────────────────────────────────┘                       │ IME / Share / PROCESS_TEXT / Tile / a11y ↕  │
-                                                                     │ MyClipSyncImeService → InputConnection      │
+                                                                     │ SynqviaImeService → InputConnection      │
                                                                      └─────────────────────────────────────────────┘
 ```
 
 * Single-connection model: Android-client → Linux-server wins.
 * KDE-Connect-style split on Linux: UI-agnostic core (`engine+bt+history+clipboard`) with thin consumers (`window`, `tray`, `cli`).
-* **NEW decoupled split on Android (see `README.md` §1):** clipboard integration (`MyClipSyncImeService` + all fallback entry points) is separated from transport (`ClipSyncService`) by `ClipboardCaptureManager` + `ClipRepository`. Capture paths never touch sockets; service never touches `ClipboardManager` directly except via manager.
+* **NEW decoupled split on Android (see `README.md` §1):** clipboard integration (`SynqviaImeService` + all fallback entry points) is separated from transport (`ClipSyncService`) by `ClipboardCaptureManager` + `ClipRepository`. Capture paths never touch sockets; service never touches `ClipboardManager` directly except via manager.
 
 ### 6.2 Data Flow (updated)
 
@@ -287,8 +287,8 @@ Tap card → `currentInputConnection.commitText(text)`; long-press menu → Past
 * `engine.py / ClipSyncService.onRemote()` — ordering, conflict, persistence, ack policy.
 * `bt.py / ClipSyncService.connectLoop()` — transport, reconnect, lifecycle.
 * `history.py / data/ClipRepository+ClipDao` — storage, cap, search, **IME expiry query + pin ops (new)**.
-* `main.py / MyClipSyncApp+AppContainer` — wiring, lifecycle, **DI singleton for manager (new)**.
-* `ime/MyClipSyncImeService + ClipImeAdapter` — sanctioned foreground capture + Gboard-like history UI (new).
+* `main.py / SynqviaApp+AppContainer` — wiring, lifecycle, **DI singleton for manager (new)**.
+* `ime/SynqviaImeService + ClipImeAdapter` — sanctioned foreground capture + Gboard-like history UI (new).
 
 ---
 
@@ -385,7 +385,7 @@ CREATE INDEX idx_clips_ts ON clips(ts DESC);
 | UI | GTK 3 via PyGObject (`gi.repository Gtk/Gdk/GLib`), AyatanaAppIndicator3 (fallback `Gtk.StatusIcon`) |
 | BT | PyBluez `bluetooth.BluetoothSocket(RFCOMM)` + SDP `advertise_service(SERIAL_PORT_PROFILE)`; stdlib `AF_BLUETOOTH/BTPROTO_RFCOMM` fallback |
 | DB | `sqlite3` + WAL |
-| IPC/single-instance | `fcntl` lock + `Gtk.Application(application_id=com.myclipsync)` D-Bus activation |
+| IPC/single-instance | `fcntl` lock + `Gtk.Application(application_id=com.github.premtechworks.synqvia)` D-Bus activation |
 | Deps | `pybluez, PyGObject, pycairo`; sys pkgs `python3-gi gir1.2-gtk-3.0 gir1.2-ayatanaappindicator3-0.1 bluez libbluetooth-dev` |
 | Tests | `pytest` (`tests/test_protocol.py`: roundtrip, split-frames, lww, suppress-echo, dedup-ids) |
 
@@ -393,7 +393,7 @@ CREATE INDEX idx_clips_ts ON clips(ts DESC);
 
 | Layer | Tech |
 |-------|------|
-| SDK | **`namespace com.example`, `applicationId com.aistudio.myclipsync.qkzrvw`, `compileSdk 36`, `minSdk 26`, `targetSdk 34`** (was 36), Java 11, KSP + Moshi codegen, Secrets plugin |
+| SDK | **`namespace com.github.premtechworks.synqvia`, `applicationId com.github.premtechworks.synqvia`, `compileSdk 36`, `minSdk 26`, `targetSdk 34`** (was 36), Java 11, KSP + Moshi codegen, Secrets plugin |
 | UI | Compose (`material3`, BOM) + `recyclerview:1.3.2` **(new, for IME panel)** + legacy Views for IME layouts; `LiquidGlass` theme; screens Dashboard/History/Settings/Setup |
 | IME | `InputMethodService`, `method.xml` (`en_US/keyboard`, `supportsSwitchingToNextInputMethod`), `InputConnection.commitText`, `InputMethodManager` switch/picker |
 | Persistence | `room-runtime/ktx` **v2** (`MIGRATION_1_2`), `clips.db` |
@@ -429,19 +429,19 @@ KDE-Connect / ClipCascade / **Gboard** inspired: **status-first device card, sea
 ### 9.3 Linux Tray (`tray.py` — unchanged)
 
 * Ayatana `APPLICATION_STATUS` (`edit-paste` icon) else legacy `StatusIcon` + `activate→show_window`.
-* Menu: disabled `MyClipSync: <state>` header, `Show window`, last-10 clips (`▶/◀` + 60 chars), `Clear history`, `Quit`. Rebuilt on every status change.
+* Menu: disabled `Synqvia: <state>` header, `Show window`, last-10 clips (`▶/◀` + 60 chars), `Clear history`, `Quit`. Rebuilt on every status change.
 
 ### 9.4 Android Material UI + IME (changed)
 
 * Compose `Theme` + `LiquidGlass` cards; `MainViewModel` tabs Sync/History/Setup/Settings, search + `ClipFilter` (**now incl. `PINNED`**), stats, diagnostic logs, sync/test/resend/pin/delete/clear.
-* **NEW IME panel (`ime_clipboard_view.xml`, 260dp `#0A1120`):** header (`MyClipSync` cyan + `Clipboard` subtitle + switch-keyboard + close buttons on `#141E33`), `RecyclerView` (6dp/8dp padding) + empty state (`ic_ime_empty`, `ime_no_clips`, hint text). Cards (`item_ime_clip.xml`, `bg_ime_card`, 12dp/4dp margins, 12dp padding): source badge (PC indigo / Local cyan), relative time, pin (filled cyan vs outline gray) + delete buttons, 3-line preview (white, or gray masked `•••••••• (Sensitive Content)`).
+* **NEW IME panel (`ime_clipboard_view.xml`, 260dp `#0A1120`):** header (`Synqvia` cyan + `Clipboard` subtitle + switch-keyboard + close buttons on `#141E33`), `RecyclerView` (6dp/8dp padding) + empty state (`ic_ime_empty`, `ime_no_clips`, hint text). Cards (`item_ime_clip.xml`, `bg_ime_card`, 12dp/4dp margins, 12dp padding): source badge (PC indigo / Local cyan), relative time, pin (filled cyan vs outline gray) + delete buttons, 3-line preview (white, or gray masked `•••••••• (Sensitive Content)`).
 * **NEW interactions:** tap → `commitText` paste (or copy+toast fallback); pin icon → `setPinned`; trash → `deleteById`; long-press → themed `PopupMenu` (Paste / Pin-Unpin / Copy to Clipboard / Send to PC / Delete); keyboard icon → previous IME or system picker.
-* Persistent notif: `MyClipSync: <status>`, ongoing, open-app + `Sync to PC` actions.
+* Persistent notif: `Synqvia: <status>`, ongoing, open-app + `Sync to PC` actions.
 * QS Tile `Sync to PC`, Share/PROCESS_TEXT `Send to PC`, Setup wizard (`✦ Seamless setup`) now with **IME card (#5)** + OEM deep-links + device-admin enrollment.
 
 ### 9.5 Copy / Tone
 
-Status strings consistent: `Starting… / Connected (peer) / Offline — listening / Offline — retrying / Offline — set PC MAC / Offline — Bluetooth off / Offline — bad PC MAC`. History arrows `▶/◀`, empty `(empty)`, loser `[conflict loser]/[loser]`. **New IME strings:** `MyClipSync Keyboard / Clipboard History / Tap to paste, long press for options / Pinned-Unpinned / Send to PC / Copy to Clipboard / •••••••• (Sensitive Content) / Pasted / Copied to clipboard.**
+Status strings consistent: `Starting… / Connected (peer) / Offline — listening / Offline — retrying / Offline — set PC MAC / Offline — Bluetooth off / Offline — bad PC MAC`. History arrows `▶/◀`, empty `(empty)`, loser `[conflict loser]/[loser]`. **New IME strings:** `Synqvia Keyboard / Clipboard History / Tap to paste, long press for options / Pinned-Unpinned / Send to PC / Copy to Clipboard / •••••••• (Sensitive Content) / Pasted / Copied to clipboard.**
 
 ---
 
@@ -456,7 +456,7 @@ Status strings consistent: `Starting… / Connected (peer) / Offline — listeni
 * `ProtocolUnitTest` (extended + sha256 test): roundtrip (unicode ✓🚀), 10-byte-chunk split frames (clip+ack), LWW + tie-break, SHA-256 determinism/64-hex.
 * `ClipboardCaptureManagerTest` (7): persist+outbound dispatch (id match), echo suppression on `applyRemoteClip` (clipboard assert + null capture + 0 outbound), suppression expiry (100ms arm / +200ms clear), duplicate-observer coalescing (1 row + 1 outbound), distinct clips pass, blank/whitespace ignored, sensitive flag persisted.
 * `ClipRepositoryImeTest` (3): 1h expiry — old-unpinned hidden, old-pinned + fresh shown pinned-first, sync history still 3/3; `setPinned` toggle; `deleteById`.
-* `ImeServiceIntegrationTest` (4): service lifecycle (create + `onCreateInputView` + destroy), adapter binding/formatting (text, `2m ago`, `Local`, click/pin/delete dispatch), sensitive masking (no plaintext leak), `commitText` paste simulation (`Hello ` → `Hello World from MyClipSync!`).
+* `ImeServiceIntegrationTest` (4): service lifecycle (create + `onCreateInputView` + destroy), adapter binding/formatting (text, `2m ago`, `Local`, click/pin/delete dispatch), sensitive masking (no plaintext leak), `commitText` paste simulation (`Hello ` → `Hello World from Synqvia!`).
 
 **Manual (from `TEST_PLAN.md` + `README.md` §6 — IME rows new):** no ping-pong 10s, near-simultaneous converge + loser in both histories, empty-clear syncs, kill-mid-sync outbox flush once each, BT-kill offline UI → ≤30s reconnect ts-ordered, PC reboot autostart, phone reboot `BOOT_COMPLETED` + notif, **plus IME: enable keyboard → copy in Chrome → Linux receipt + no echo; remote `send` → IME strip shows it + no loopback; tap-to-paste commits; pin persists past expiry; keyboard-switch returns to Gboard.**
 
@@ -481,4 +481,4 @@ Status strings consistent: `Starting… / Connected (peer) / Offline — listeni
 
 ---
 
-*Regenerated from repo inspection 2026-09-26 incorporating commit `af42300` (IME) + root `README.md` rewrite. Normative docs remain `PROTOCOL.md` (wire) + `README.md` (install/IME) + `TEST_PLAN.md` (QA). Prior REPORT inaccuracies fixed: Android package `com.example`, `applicationId com.aistudio.myclipsync.qkzrvw`, `compileSdk 36/targetSdk 34`, Compose UI, Room v2, shared-pipeline architecture.*
+*Regenerated from repo inspection 2026-09-26 incorporating commit `af42300` (IME) + root `README.md` rewrite. Normative docs remain `PROTOCOL.md` (wire) + `README.md` (install/IME) + `TEST_PLAN.md` (QA). Prior REPORT inaccuracies fixed: Android package `com.github.premtechworks.synqvia`, `applicationId com.github.premtechworks.synqvia`, `compileSdk 36/targetSdk 34`, Compose UI, Room v2, shared-pipeline architecture.*

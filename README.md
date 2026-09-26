@@ -1,4 +1,4 @@
-# MyClipSync — Bluetooth clipboard sync (Linux Mint Xfce ↔ Android)
+# Synqvia — Bluetooth clipboard sync (Linux Mint Xfce ↔ Android)
 
 Offline-first Bluetooth Classic (RFCOMM/SPP) clipboard synchronization with Gboard-like Input Method Service (IME) clipboard capture. No cloud, no local network dependency. Text + history only (v1).
 
@@ -6,13 +6,13 @@ Offline-first Bluetooth Classic (RFCOMM/SPP) clipboard synchronization with Gboa
 
 ## 1. Architecture Overview
 
-MyClipSync features a decoupled, offline-first architecture separating Android clipboard integration from Bluetooth transport:
+Synqvia features a decoupled, offline-first architecture separating Android clipboard integration from Bluetooth transport:
 
 ```text
 Android System Clipboard
           │
           ▼
-MyClipSyncImeService
+SynqviaImeService
 (InputMethodService)
           │
           ├── observe/read accessible clipboard data
@@ -49,20 +49,20 @@ Shared ClipRepository (Room Database: clips.db)
 * **Android 13+ (API 33)** introduced `ClipDescription.EXTRA_IS_SENSITIVE` to prevent clipboard contents from being previewed unnecessarily.
 * **Android 14+ (API 34)** strictly limits background apps from even receiving `onPrimaryClipChanged` listener callbacks.
 * **The IME Advantage:** The active/default input method service is deeply integrated with Android's windowing and input system. When the user interacts with an input field, the IME has sanctioned access to inspect the clipboard and paste directly into the focused field via `InputConnection.commitText()`.
-* **Important Note:** IME clipboard access is NOT unrestricted root-level access. It operates when MyClipSync is selected as an input method. Capability detection and graceful fallbacks are built in for non-IME usage.
+* **Important Note:** IME clipboard access is NOT unrestricted root-level access. It operates when Synqvia is selected as an input method. Capability detection and graceful fallbacks are built in for non-IME usage.
 
 ---
 
-## 2. Enabling MyClipSync Keyboard on Android
+## 2. Enabling Synqvia Keyboard on Android
 
-1. Open the MyClipSync app on Android.
+1. Open the Synqvia app on Android.
 2. Navigate to the **✦ Setup** tab.
 3. Locate the **Clipboard Keyboard (IME)** card and tap **Enable Keyboard**.
-4. In Android's **Manage Keyboards** settings, toggle **MyClipSync Keyboard** to ON.
+4. In Android's **Manage Keyboards** settings, toggle **Synqvia Keyboard** to ON.
 5. In any text field:
    - Tap the keyboard switch icon on your navigation bar / current keyboard.
-   - Select **MyClipSync Keyboard**.
-6. The MyClipSync clipboard strip opens:
+   - Select **Synqvia Keyboard**.
+6. The Synqvia clipboard strip opens:
    - Recent clipboard items are displayed.
    - **Tap any card** to paste it directly into the active text field.
    - **Tap the Pin icon** to keep an item permanently.
@@ -72,7 +72,7 @@ Shared ClipRepository (Room Database: clips.db)
 ### Gboard-like Expiration Behavior
 * **Unpinned items:** Automatically hidden from the IME panel after 1 hour (configurable in `SyncPreferences`).
 * **Pinned items:** Persist indefinitely in the IME panel.
-* **Persistent Sync History:** Expired IME clips remain fully preserved in MyClipSync's main synchronization history up to the configured cap (default 500 records).
+* **Persistent Sync History:** Expired IME clips remain fully preserved in Synqvia's main synchronization history up to the configured cap (default 500 records).
 
 ---
 
@@ -97,11 +97,11 @@ Shared ClipRepository (Room Database: clips.db)
 ### Step 2: Linux Install
 ```bash
 cd linux && sudo bash install.sh
-myclipsync --show                                      # GTK window + status + tray
-myclipsync-cli status | history | send "text" | log   # Headless CLI
+synqvia --show                                      # GTK window + status + tray
+synqvia-cli status | history | send "text" | log   # Headless CLI
 ```
 * Autostart entry installed to `~/.config/autostart`.
-* SQLite history: `~/.config/myclipsync/history.db`.
+* SQLite history: `~/.config/synqvia/history.db`.
 
 ### Step 3: Android Install
 ```bash
@@ -115,7 +115,7 @@ cd android
 
 ## 4. Input Pathways & Fallbacks
 
-MyClipSync normalizes all clipboard sources through `ClipboardCaptureManager`:
+Synqvia normalizes all clipboard sources through `ClipboardCaptureManager`:
 
 | Pathway | Trigger | Android Version Support | Redundancy Status |
 | :--- | :--- | :--- | :--- |
@@ -154,17 +154,17 @@ Test suite includes:
 
 ### Manual Verification Checklist
 1. **Local Copy via IME:**
-   - Enable MyClipSync Keyboard.
+   - Enable Synqvia Keyboard.
    - Copy text in Chrome or any app.
-   - Verify 1 clip recorded in MyClipSync History and received on Linux PC (`myclipsync-cli history`).
+   - Verify 1 clip recorded in Synqvia History and received on Linux PC (`synqvia-cli history`).
    - Verify no echo is sent back to Android.
 2. **Remote Clip Reception:**
-   - Run `myclipsync-cli send "Hello from Mint"`.
+   - Run `synqvia-cli send "Hello from Mint"`.
    - Android notification confirms reception.
-   - Open MyClipSync Keyboard in any text field: "Hello from Mint" appears in clipboard history.
+   - Open Synqvia Keyboard in any text field: "Hello from Mint" appears in clipboard history.
    - Verify no loop-back packet is received by Linux.
 3. **Pasting from IME:**
-   - Tap the card in the MyClipSync Keyboard panel.
+   - Tap the card in the Synqvia Keyboard panel.
    - Text is immediately committed into the editor.
 4. **Pin & Expiration:**
    - Pin an item in the IME panel.

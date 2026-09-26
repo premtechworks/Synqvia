@@ -1,5 +1,5 @@
 {
-  "name": "MyClipSync",
+  "name": "Synqvia",
   "description": "Bluetooth Classic clipboard sync between Android and Linux PC with offline queue, history, and seamless accessibility integration.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

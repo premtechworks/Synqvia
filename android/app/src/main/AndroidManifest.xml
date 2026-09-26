@@ -23,7 +23,7 @@
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
-        android:name=".MyClipSyncApp"
+        android:name=".SynqviaApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -52,7 +52,7 @@
             android:name=".ShareActivity"
             android:exported="true"
             android:label="@string/action_send_to_pc"
-            android:theme="@style/Theme.MyClipSync.Translucent">
+            android:theme="@style/Theme.Synqvia.Translucent">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -65,7 +65,7 @@
             android:name=".ProcessTextActivity"
             android:exported="true"
             android:label="@string/process_text_label"
-            android:theme="@style/Theme.MyClipSync.Translucent">
+            android:theme="@style/Theme.Synqvia.Translucent">
             <intent-filter>
                 <action android:name="android.intent.action.PROCESS_TEXT" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -79,7 +79,7 @@
             android:exported="false"
             android:noHistory="true"
             android:excludeFromRecents="true"
-            android:theme="@style/Theme.MyClipSync.Translucent" />
+            android:theme="@style/Theme.Synqvia.Translucent" />
 
         <!-- Persistent RFCOMM Background Sync Service -->
         <service
@@ -115,7 +115,7 @@
 
         <!-- Input Method Service for clipboard integration & Gboard-like history panel -->
         <service
-            android:name=".ime.MyClipSyncImeService"
+            android:name=".ime.SynqviaImeService"
             android:label="@string/ime_name"
             android:permission="android.permission.BIND_INPUT_METHOD"
             android:exported="true">

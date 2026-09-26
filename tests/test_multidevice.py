@@ -5,9 +5,9 @@ import threading
 import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "linux"))
-from myclipsync import protocol
-from myclipsync.bt import BtServer, ClientConnection
-from myclipsync.engine import SyncEngine
+from synqvia import protocol
+from synqvia.bt import BtServer, ClientConnection
+from synqvia.engine import SyncEngine
 
 
 class DummySocket:

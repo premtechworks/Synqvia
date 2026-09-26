@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "MyClipSync"
+rootProject.name = "Synqvia"
 
 include(":app")

@@ -1,4 +1,4 @@
-# MyClipSync — Wire Protocol v1 (RFCOMM/SPP)
+# Synqvia — Wire Protocol v1 (RFCOMM/SPP)
 
 Transport: **Bluetooth Classic RFCOMM/SPP**, persistent bidirectional stream.
 No BLE. No cloud. Devices must already be OS-level bonded. No in-app pairing UI.

@@ -1,9 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=MyClipSync
-Comment=Bluetooth clipboard sync (tray)
-Exec=/usr/local/bin/myclipsync
-Icon=edit-paste
-Terminal=false
-Categories=Utility;
-X-GNOME-Autostart-enabled=true

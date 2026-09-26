@@ -1,9 +1,9 @@
 #!/bin/bash
 # Installer: deps + launchers + Xfce autostart + app-menu entry.
 # Layout (KDE-Connect style split: daemon-core + GUI + CLI in one package):
-#   /usr/local/lib/myclipsync/myclipsync/   package
-#   /usr/local/bin/myclipsync               GUI daemon (tray; --show for window)
-#   /usr/local/bin/myclipsync-cli           headless CLI (status/history/send/clear/log)
+#   /usr/local/lib/synqvia/synqvia/   package
+#   /usr/local/bin/synqvia               GUI daemon (tray; --show for window)
+#   /usr/local/bin/synqvia-cli           headless CLI (status/history/send/clear/log)
 set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 sudo apt-get update
@@ -17,23 +17,23 @@ else
 fi
 # Single autostart entry (user-level only — a system copy would launch twice).
 mkdir -p ~/.config/autostart
-cp "$SCRIPT_DIR/myclipsync.desktop" ~/.config/autostart/myclipsync.desktop
+cp "$SCRIPT_DIR/synqvia.desktop" ~/.config/autostart/synqvia.desktop
 # App-menu entry opens the window directly.
 mkdir -p ~/.local/share/applications
-sed 's|^Exec=.*|Exec=/usr/local/bin/myclipsync --show|' "$SCRIPT_DIR/myclipsync.desktop" \
-  > ~/.local/share/applications/myclipsync.desktop
-sudo mkdir -p /usr/local/lib/myclipsync
-sudo cp -r "$SCRIPT_DIR/myclipsync" /usr/local/lib/myclipsync/
-sudo tee /usr/local/bin/myclipsync >/dev/null <<'EOF'
+sed 's|^Exec=.*|Exec=/usr/local/bin/synqvia --show|' "$SCRIPT_DIR/synqvia.desktop" \
+  > ~/.local/share/applications/synqvia.desktop
+sudo mkdir -p /usr/local/lib/synqvia
+sudo cp -r "$SCRIPT_DIR/synqvia" /usr/local/lib/synqvia/
+sudo tee /usr/local/bin/synqvia >/dev/null <<'EOF'
 #!/bin/bash
-export PYTHONPATH="/usr/local/lib/myclipsync:${PYTHONPATH}"
-exec python3 -m myclipsync.main "$@"
+export PYTHONPATH="/usr/local/lib/synqvia:${PYTHONPATH}"
+exec python3 -m synqvia.main "$@"
 EOF
-sudo tee /usr/local/bin/myclipsync-cli >/dev/null <<'EOF'
+sudo tee /usr/local/bin/synqvia-cli >/dev/null <<'EOF'
 #!/bin/bash
-export PYTHONPATH="/usr/local/lib/myclipsync:${PYTHONPATH}"
-exec python3 -m myclipsync.cli "$@"
+export PYTHONPATH="/usr/local/lib/synqvia:${PYTHONPATH}"
+exec python3 -m synqvia.cli "$@"
 EOF
-sudo chmod +x /usr/local/bin/myclipsync /usr/local/bin/myclipsync-cli
-echo "Done. Pair via bluetoothctl first, then run: myclipsync --show"
-echo "Headless: myclipsync-cli status | history | send \"text\" | log"
+sudo chmod +x /usr/local/bin/synqvia /usr/local/bin/synqvia-cli
+echo "Done. Pair via bluetoothctl first, then run: synqvia --show"
+echo "Headless: synqvia-cli status | history | send \"text\" | log"
