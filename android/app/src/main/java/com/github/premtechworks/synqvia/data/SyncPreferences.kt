@@ -28,6 +28,16 @@ class SyncPreferences(context: Context) {
     private val _configFlow = MutableStateFlow(loadConfig())
     val configFlow: StateFlow<SyncConfig> = _configFlow.asStateFlow()
 
+    private val _appIconFlow = MutableStateFlow(prefs.getString(KEY_APP_ICON, "classic") ?: "classic")
+    val appIconFlow: StateFlow<String> = _appIconFlow.asStateFlow()
+
+    var appIcon: String
+        get() = prefs.getString(KEY_APP_ICON, "classic") ?: "classic"
+        set(value) {
+            prefs.edit().putString(KEY_APP_ICON, value).apply()
+            _appIconFlow.value = value
+        }
+
     fun getConfig(): SyncConfig = _configFlow.value
 
     fun updateConfig(
@@ -68,7 +78,13 @@ class SyncPreferences(context: Context) {
         get() = prefs.getInt(KEY_IME_EXPIRY_HOURS, 1)
         set(value) = prefs.edit().putInt(KEY_IME_EXPIRY_HOURS, value.coerceAtLeast(0)).apply()
 
+    var isUserStopped: Boolean
+        get() = prefs.getBoolean(KEY_USER_STOPPED, false)
+        set(value) = prefs.edit().putBoolean(KEY_USER_STOPPED, value).apply()
+
     companion object {
+        const val KEY_USER_STOPPED = "user_stopped"
+        const val KEY_APP_ICON = "app_icon"
         private const val KEY_PC_MAC = "pc_mac"
         private const val KEY_CHANNEL = "channel"
         private const val KEY_CAP = "history_cap"

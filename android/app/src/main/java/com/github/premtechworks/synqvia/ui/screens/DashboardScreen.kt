@@ -84,7 +84,8 @@ fun DashboardScreen(
                 config = config,
                 onSyncNow = { viewModel.syncNow() },
                 onSendTest = { viewModel.sendTestClip() },
-                onReconnect = { viewModel.reconnect() }
+                onReconnect = { viewModel.reconnect() },
+                onToggleService = { viewModel.toggleService(it) }
             )
         }
 

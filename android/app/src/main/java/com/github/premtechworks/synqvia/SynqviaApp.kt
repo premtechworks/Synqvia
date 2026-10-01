@@ -14,16 +14,18 @@ class SynqviaApp : Application() {
         super.onCreate()
         container = DefaultAppContainer(this)
 
-        // Automatically start the background sync service
-        val serviceIntent = Intent(this, ClipSyncService::class.java)
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(serviceIntent)
-            } else {
-                startService(serviceIntent)
+        // Automatically start the background sync service if not explicitly stopped
+        if (!container.syncPreferences.isUserStopped) {
+            val serviceIntent = Intent(this, ClipSyncService::class.java)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(serviceIntent)
+                } else {
+                    startService(serviceIntent)
+                }
+            } catch (_: Exception) {
+                // Handled when app starts from background restrictions
             }
-        } catch (_: Exception) {
-            // Handled when app starts from background restrictions
         }
     }
 }

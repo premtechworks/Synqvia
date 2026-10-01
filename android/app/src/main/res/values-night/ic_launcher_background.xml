@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark mode: dark background for white Q icon -->
+    <color name="ic_launcher_background">#0a1428</color>
+    <!-- Classic permanent dark blue background -->
+    <color name="ic_launcher_background_classic">#0a1428</color>
+</resources>

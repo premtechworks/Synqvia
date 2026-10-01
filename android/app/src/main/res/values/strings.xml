@@ -23,4 +23,17 @@
     <string name="ime_copied">Copied to clipboard</string>
     <string name="setup_ime_title">Clipboard Keyboard (IME)</string>
     <string name="setup_ime_desc">Enable Synqvia as an Input Method to capture clipboard seamlessly and paste from history.</string>
+    <string name="action_stop">Stop</string>
+    <string name="action_try_again">Try Again</string>
+    <string name="action_start">Start</string>
+    <string name="connection_failed_try_again">Connection Failed - Try Again</string>
+    <string name="status_retrying">Retrying %1$d/%2$d…</string>
+    <string name="status_retrying_with_delay">Retrying in %1$ds (attempt %2$d/%3$d)</string>
+    <string name="status_connecting">Connecting %1$d/%2$d…</string>
+    <string name="status_connected">Connected (%1$s)</string>
+    <string name="status_offline">Offline — %1$s</string>
+    <string name="status_stopped">Stopped</string>
+    <string name="status_syncing">Syncing clipboard…</string>
+    <string name="label_sync_service">Sync Service</string>
+    <string name="desc_sync_service">Background Bluetooth sync with PC</string>
 </resources>

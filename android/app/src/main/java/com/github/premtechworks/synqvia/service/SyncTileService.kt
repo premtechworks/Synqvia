@@ -4,14 +4,21 @@ import android.content.Intent
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.widget.Toast
+import com.github.premtechworks.synqvia.SynqviaApp
 import com.github.premtechworks.synqvia.TrampolineActivity
+import com.github.premtechworks.synqvia.data.SyncPreferences
 
 class SyncTileService : TileService() {
 
+    private fun getSyncPreferences(): SyncPreferences {
+        return (application as? SynqviaApp)?.container?.syncPreferences ?: SyncPreferences(this)
+    }
+
     override fun onStartListening() {
         super.onStartListening()
+        val userStopped = getSyncPreferences().isUserStopped
         qsTile?.apply {
-            state = Tile.STATE_ACTIVE
+            state = if (userStopped) Tile.STATE_INACTIVE else Tile.STATE_ACTIVE
             label = "Sync to PC"
             updateTile()
         }
@@ -19,6 +26,12 @@ class SyncTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
+
+        val syncPreferences = getSyncPreferences()
+        if (syncPreferences.isUserStopped) {
+            Toast.makeText(this, "Sync service is stopped. Enable in app.", Toast.LENGTH_SHORT).show()
+            return
+        }
 
         // 1. Check if we have a fresh text selection from accessibility service
         val freshSelection = SelectionCache.getFreshSelection()

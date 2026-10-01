@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Sync
@@ -25,12 +26,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -63,8 +65,11 @@ fun HeroSyncCard(
     onSyncNow: () -> Unit,
     onSendTest: () -> Unit,
     onReconnect: () -> Unit,
+    onToggleService: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val isEnabled = connectionState !is SyncConnectionState.Stopped
+
     val (statusTitle, statusSubtitle, statusColor, glowColor) = when (connectionState) {
         is SyncConnectionState.Connected -> Quadruple(
             "Connected",
@@ -72,9 +77,12 @@ fun HeroSyncCard(
             StatusConnected,
             StatusConnectedGlow
         )
-        is SyncConnectionState.Retrying -> Quadruple(
+        is SyncConnectionState.Connecting -> Quadruple(
             "Connecting...",
-            "Attempt ${connectionState.attempt} • retry in ${connectionState.nextRetrySec}s",
+            if (connectionState.nextRetrySec > 0)
+                "Retrying ${connectionState.attempt}/${connectionState.maxAttempts} • in ${connectionState.nextRetrySec}s"
+            else
+                "Connecting ${connectionState.attempt}/${connectionState.maxAttempts}…",
             StatusRetrying,
             StatusRetryingGlow
         )
@@ -83,6 +91,18 @@ fun HeroSyncCard(
             connectionState.reason,
             StatusOffline,
             StatusOfflineGlow
+        )
+        is SyncConnectionState.Failed -> Quadruple(
+            "Connection Failed",
+            "Connection Failed - Try Again",
+            StatusOffline,
+            StatusOfflineGlow
+        )
+        is SyncConnectionState.Stopped -> Quadruple(
+            "Stopped",
+            "Sync service is disabled",
+            Color(0xFF64748B),
+            Color(0x3364748B)
         )
         is SyncConnectionState.Syncing -> Quadruple(
             "Syncing",
@@ -106,13 +126,16 @@ fun HeroSyncCard(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            // Header Row: Status Dot + State Title + Reconnect Button
+            // Header Row: Status Dot + State Title + Reconnect Button & Switch
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
                     GlowingStatusDot(
                         statusColor = statusColor,
                         glowColor = glowColor,
@@ -136,20 +159,39 @@ fun HeroSyncCard(
                     }
                 }
 
-                IconButton(
-                    onClick = onReconnect,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(Color(0x18FFFFFF))
-                        .border(1.dp, Color(0x33FFFFFF), CircleShape)
-                        .testTag("reconnect_button")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Reconnect Bluetooth RFCOMM socket",
-                        tint = CyanPrimary,
-                        modifier = Modifier.size(20.dp)
+                    if (isEnabled && connectionState !is SyncConnectionState.Failed) {
+                        IconButton(
+                            onClick = onReconnect,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(0x18FFFFFF))
+                                .border(1.dp, Color(0x33FFFFFF), CircleShape)
+                                .testTag("reconnect_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Reconnect Bluetooth RFCOMM socket",
+                                tint = CyanPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    Switch(
+                        checked = isEnabled,
+                        onCheckedChange = onToggleService,
+                        modifier = Modifier.testTag("service_toggle_switch"),
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = CyanPrimary,
+                            checkedTrackColor = CyanPrimary.copy(alpha = 0.35f),
+                            uncheckedThumbColor = Color(0xFF64748B),
+                            uncheckedTrackColor = Color(0x22FFFFFF)
+                        )
                     )
                 }
             }
@@ -204,57 +246,112 @@ fun HeroSyncCard(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Action Buttons Row: "Sync Now" + "Send Test"
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Button(
-                    onClick = onSyncNow,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp)
-                        .testTag("sync_now_button"),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = CyanPrimary,
-                        contentColor = Color(0xFF00363D)
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Sync,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Sync Now",
-                        fontWeight = FontWeight.Bold
-                    )
+            // Actions Area: Depends on state (Failed, Stopped, or Active)
+            when (connectionState) {
+                is SyncConnectionState.Failed -> {
+                    Button(
+                        onClick = onReconnect,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("try_again_button"),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFDC2626),
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Connection Failed - Try Again",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
+                is SyncConnectionState.Stopped -> {
+                    Button(
+                        onClick = { onToggleService(true) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("start_service_button"),
+                        shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CyanPrimary,
+                            contentColor = Color(0xFF00363D)
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Start Sync Service",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                else -> {
+                    // Action Buttons Row: "Sync Now" + "Send Test"
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = onSyncNow,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                                .testTag("sync_now_button"),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = CyanPrimary,
+                                contentColor = Color(0xFF00363D)
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Sync,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Sync Now",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
-                OutlinedButton(
-                    onClick = onSendTest,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp)
-                        .testTag("send_test_button"),
-                    shape = RoundedCornerShape(14.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, CyanPrimary.copy(alpha = 0.5f)),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = CyanPrimary
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Send,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Send Test",
-                        fontWeight = FontWeight.SemiBold
-                    )
+                        OutlinedButton(
+                            onClick = onSendTest,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                                .testTag("send_test_button"),
+                            shape = RoundedCornerShape(14.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, CyanPrimary.copy(alpha = 0.5f)),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = CyanPrimary
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Send,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Send Test",
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -19,12 +19,21 @@ class ProcessTextActivity : Activity() {
         }
 
         if (selectedText.isNotBlank()) {
-            val serviceIntent = Intent(this, ClipSyncService::class.java).apply {
-                action = ClipSyncService.ACTION_INJECT
-                putExtra(ClipSyncService.EXTRA_TEXT, selectedText)
+            val app = application as? com.github.premtechworks.synqvia.SynqviaApp
+            val syncPreferences = app?.container?.syncPreferences ?: com.github.premtechworks.synqvia.data.SyncPreferences(this)
+
+            if (syncPreferences.isUserStopped) {
+                Toast.makeText(this, "Sync service is stopped. Start in app.", Toast.LENGTH_SHORT).show()
+            } else {
+                val serviceIntent = Intent(this, ClipSyncService::class.java).apply {
+                    action = ClipSyncService.ACTION_INJECT
+                    putExtra(ClipSyncService.EXTRA_TEXT, selectedText)
+                }
+                try {
+                    startService(serviceIntent)
+                    Toast.makeText(this, "Sent selection to PC ✓", Toast.LENGTH_SHORT).show()
+                } catch (_: Exception) {}
             }
-            startService(serviceIntent)
-            Toast.makeText(this, "Sent selection to PC ✓", Toast.LENGTH_SHORT).show()
         }
 
         finish()

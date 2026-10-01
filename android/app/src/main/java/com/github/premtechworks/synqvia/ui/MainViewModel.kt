@@ -37,6 +37,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import android.os.Build
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.flow.map
+
 enum class ClipFilter {
     ALL, SENT, RECEIVED, CONFLICTS, PINNED
 }
@@ -66,7 +70,27 @@ class MainViewModel(
 ) : AndroidViewModel(application) {
 
     val connectionState: StateFlow<SyncConnectionState> = ClipSyncService.connectionState
+    val isUserStopped: Boolean get() = syncPreferences.isUserStopped
+    val isServiceEnabled: StateFlow<Boolean> = connectionState
+        .map { it !is SyncConnectionState.Stopped && !syncPreferences.isUserStopped }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = !syncPreferences.isUserStopped && connectionState.value !is SyncConnectionState.Stopped
+        )
     val config: StateFlow<SyncConfig> = syncPreferences.configFlow
+    val appIcon: StateFlow<String> = syncPreferences.appIconFlow
+
+    fun setAppIcon(icon: String) {
+        syncPreferences.appIcon = icon
+        AppIconManager.setAppIcon(getApplication(), icon)
+        val iconLabel = if (icon == AppIconManager.ICON_THEMED) "Themed / Dynamic" else "Classic"
+        _userMessage.value = "Launcher icon switched to $iconLabel"
+        addLog("INFO", "Switched app launcher icon to: $iconLabel")
+    }
+
+    private var lastToggleTime = 0L
+    private val toggleDebounceMs = 500L
 
     private val _isDefaultIme = MutableStateFlow(defaultImeDetector.isSynqviaDefaultIme())
     val isDefaultIme: StateFlow<Boolean> = _isDefaultIme.asStateFlow()
@@ -178,6 +202,10 @@ class MainViewModel(
     }
 
     fun syncNow() {
+        if (syncPreferences.isUserStopped) {
+            _userMessage.value = "Sync service is stopped. Start service first."
+            return
+        }
         val app = getApplication<Application>()
         val selection = SelectionCache.getFreshSelection()
         val textToSync = if (!selection.isNullOrBlank()) {
@@ -192,7 +220,9 @@ class MainViewModel(
                 action = ClipSyncService.ACTION_INJECT
                 putExtra(ClipSyncService.EXTRA_TEXT, textToSync)
             }
-            app.startService(intent)
+            try {
+                app.startService(intent)
+            } catch (_: Exception) {}
             _userMessage.value = "Broadcasting current clipboard to PC..."
             addLog("SUCCESS", "Manual sync triggered: ${textToSync.take(30)}...")
         } else {
@@ -201,6 +231,10 @@ class MainViewModel(
     }
 
     fun sendTestClip() {
+        if (syncPreferences.isUserStopped) {
+            _userMessage.value = "Sync service is stopped. Start service first."
+            return
+        }
         val app = getApplication<Application>()
         val timeStr = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
         val testText = "Hello from Android! Sync test at $timeStr ✓"
@@ -213,13 +247,19 @@ class MainViewModel(
             action = ClipSyncService.ACTION_INJECT
             putExtra(ClipSyncService.EXTRA_TEXT, testText)
         }
-        app.startService(intent)
+        try {
+            app.startService(intent)
+        } catch (_: Exception) {}
 
         _userMessage.value = "Sent test message to PC!"
         addLog("FRAME", "Sent test frame [len=${testText.length}]")
     }
 
     fun resendClip(clip: ClipEntity) {
+        if (syncPreferences.isUserStopped) {
+            _userMessage.value = "Sync service is stopped. Start service first."
+            return
+        }
         val app = getApplication<Application>()
         // Re-copy to local clipboard
         val cm = app.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -230,7 +270,9 @@ class MainViewModel(
             action = ClipSyncService.ACTION_INJECT
             putExtra(ClipSyncService.EXTRA_TEXT, clip.text)
         }
-        app.startService(intent)
+        try {
+            app.startService(intent)
+        } catch (_: Exception) {}
 
         _userMessage.value = "Copied to clipboard and re-sent to PC!"
         addLog("INFO", "Re-broadcasted clip ${clip.id.take(8)}")
@@ -281,12 +323,76 @@ class MainViewModel(
     }
 
     fun reconnect() {
+        syncPreferences.isUserStopped = false
         val app = getApplication<Application>()
         val intent = Intent(app, ClipSyncService::class.java).apply {
             action = ClipSyncService.ACTION_RECONNECT
         }
-        app.startService(intent)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                ContextCompat.startForegroundService(app, intent)
+            } else {
+                app.startService(intent)
+            }
+        } catch (_: Exception) {
+            app.startService(intent)
+        }
         addLog("INFO", "Forced connection restart requested")
+    }
+
+    fun toggleService(enabled: Boolean) {
+        val now = System.currentTimeMillis()
+        if (now - lastToggleTime < toggleDebounceMs) return
+        lastToggleTime = now
+
+        if (enabled) {
+            startSync()
+        } else {
+            stopSync()
+        }
+    }
+
+    fun startSync() {
+        syncPreferences.isUserStopped = false
+        val app = getApplication<Application>()
+        val intent = Intent(app, ClipSyncService::class.java).apply {
+            action = ClipSyncService.ACTION_START
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                ContextCompat.startForegroundService(app, intent)
+            } else {
+                app.startService(intent)
+            }
+        } catch (_: Exception) {
+            app.startService(intent)
+        }
+        _userMessage.value = "Starting sync service..."
+        addLog("INFO", "Sync service started by user")
+    }
+
+    fun stopSync() {
+        syncPreferences.isUserStopped = true
+        ClipSyncService.setStoppedState()
+        val app = getApplication<Application>()
+        val intent = Intent(app, ClipSyncService::class.java).apply {
+            action = ClipSyncService.ACTION_STOP
+        }
+        try {
+            app.startService(intent)
+        } catch (_: Exception) {}
+        _userMessage.value = "Sync service stopped"
+        addLog("INFO", "Sync service stopped by user")
+    }
+
+    fun resyncServiceState() {
+        if (!ClipSyncService.isRunning) {
+            if (syncPreferences.isUserStopped) {
+                ClipSyncService.setStoppedState()
+            } else if (connectionState.value !is SyncConnectionState.Failed) {
+                ClipSyncService.setStoppedState()
+            }
+        }
     }
 
     class Factory(

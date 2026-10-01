@@ -70,6 +70,7 @@ import com.github.premtechworks.synqvia.ui.screens.DashboardScreen
 import com.github.premtechworks.synqvia.ui.screens.HistoryScreen
 import com.github.premtechworks.synqvia.ui.screens.SettingsScreen
 import com.github.premtechworks.synqvia.ui.screens.SetupScreen
+import com.github.premtechworks.synqvia.ui.components.SynqviaLogo
 import com.github.premtechworks.synqvia.ui.theme.CyanPrimary
 import com.github.premtechworks.synqvia.ui.theme.DarkNavyBackground
 import com.github.premtechworks.synqvia.ui.theme.DarkNavySurface
@@ -87,7 +88,9 @@ class MainActivity : ComponentActivity() {
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {
-        viewModel.reconnect()
+        if (!viewModel.isUserStopped) {
+            viewModel.reconnect()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -177,14 +180,10 @@ fun MainAppContent(viewModel: MainViewModel) {
                         .testTag("navigation_rail")
                 ) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Synqvia",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp
-                        ),
-                        color = CyanPrimary,
-                        modifier = Modifier.padding(horizontal = 12.dp)
+                    SynqviaLogo(
+                        modifier = Modifier
+                            .height(28.dp)
+                            .padding(horizontal = 8.dp)
                     )
                     Spacer(modifier = Modifier.height(24.dp))
 

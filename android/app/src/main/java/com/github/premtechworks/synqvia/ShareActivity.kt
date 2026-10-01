@@ -59,12 +59,17 @@ class ShareActivity : ComponentActivity() {
             ""
         }
 
-        if (sharedText.isNotBlank()) {
+        val app = application as? SynqviaApp
+        val syncPreferences = app?.container?.syncPreferences ?: com.github.premtechworks.synqvia.data.SyncPreferences(this)
+
+        if (sharedText.isNotBlank() && !syncPreferences.isUserStopped) {
             val serviceIntent = Intent(this, ClipSyncService::class.java).apply {
                 action = ClipSyncService.ACTION_INJECT
                 putExtra(ClipSyncService.EXTRA_TEXT, sharedText)
             }
-            startService(serviceIntent)
+            try {
+                startService(serviceIntent)
+            } catch (_: Exception) {}
         }
 
         setContent {

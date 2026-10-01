@@ -36,6 +36,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -75,6 +77,7 @@ fun SettingsScreen(
 ) {
     val config by viewModel.config.collectAsState()
     val logs by viewModel.diagnosticLogs.collectAsState()
+    val isServiceEnabled by viewModel.isServiceEnabled.collectAsState()
 
     var pcMacInput by remember(config.pcMac) { mutableStateOf(config.pcMac) }
     var channelInput by remember(config.channel) { mutableIntStateOf(config.channel) }
@@ -118,6 +121,46 @@ fun SettingsScreen(
                             text = "Connection & Limits",
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Service Active Toggle Switch Row
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0x14000000))
+                            .border(1.dp, Color(0x1AFFFFFF), RoundedCornerShape(14.dp))
+                            .padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Sync Service",
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = if (isServiceEnabled) "Active • syncing clipboard" else "Stopped • background sync disabled",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isServiceEnabled) CyanPrimary else Color(0xFF94A3B8)
+                            )
+                        }
+
+                        Switch(
+                            checked = isServiceEnabled,
+                            onCheckedChange = { viewModel.toggleService(it) },
+                            modifier = Modifier.testTag("settings_service_toggle_switch"),
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = CyanPrimary,
+                                checkedTrackColor = CyanPrimary.copy(alpha = 0.35f),
+                                uncheckedThumbColor = Color(0xFF64748B),
+                                uncheckedTrackColor = Color(0x22FFFFFF)
+                            )
                         )
                     }
 
@@ -363,7 +406,7 @@ fun SettingsScreen(
                                     Text(
                                         text = "[${log.level}]",
                                         style = MaterialTheme.typography.labelSmall.copy(
-                                            fontFamily = FontFamily.Monospace,
+                                             fontFamily = FontFamily.Monospace,
                                             fontWeight = FontWeight.Bold
                                         ),
                                         color = badgeColor
