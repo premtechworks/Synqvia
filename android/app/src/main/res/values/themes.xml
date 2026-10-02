@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.MyApplication" parent="android:Theme.DeviceDefault.NoActionBar" />
+    <style name="Theme.Synqvia" parent="android:Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@drawable/bg_app_gradient</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <style name="Theme.MyApplication" parent="Theme.Synqvia" />
+
+    <style name="Theme.Synqvia.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#050B18</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_synqvia_logo_mark</item>
+        <item name="postSplashScreenTheme">@style/Theme.Synqvia</item>
+    </style>
 
     <style name="Theme.Synqvia.Translucent" parent="android:Theme.DeviceDefault.NoActionBar">
         <item name="android:windowBackground">@android:color/transparent</item>

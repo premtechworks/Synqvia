@@ -27,7 +27,8 @@
             android:text="Local"
             android:textColor="#00E5FF"
             android:textSize="11sp"
-            android:textStyle="bold" />
+            android:fontFamily="@font/inter_variable"
+            android:fontVariationSettings="'wght' 600, 'opsz' 14" />
 
         <TextView
             android:id="@+id/tv_clip_time"
@@ -36,8 +37,11 @@
             android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:text="Just now"
-            android:textColor="#94A3B8"
-            android:textSize="11sp" />
+            android:textColor="#7A8CAB"
+            android:textSize="11sp"
+            android:fontFamily="@font/inter_variable"
+            android:fontVariationSettings="'wght' 500, 'opsz' 14"
+            android:fontFeatureSettings="tnum" />
 
         <!-- Pin Button -->
         <ImageView
@@ -72,6 +76,8 @@
         android:lineSpacingExtra="2dp"
         android:maxLines="3"
         android:textColor="#FFFFFF"
-        android:textSize="13sp" />
+        android:textSize="13sp"
+        android:fontFamily="@font/inter_variable"
+        android:fontVariationSettings="'wght' 400, 'opsz' 14" />
 
 </LinearLayout>

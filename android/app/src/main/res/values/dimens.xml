@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- IME Dimensions -->
+    <dimen name="ime_toolbar_height">44dp</dimen>
+    <dimen name="ime_key_height">46dp</dimen>
+    <dimen name="ime_key_height_landscape">38dp</dimen>
+    <dimen name="ime_key_radius">8dp</dimen>
+    <dimen name="ime_key_gap_h">4dp</dimen>
+    <dimen name="ime_key_gap_v">6dp</dimen>
+    <dimen name="ime_key_side_padding">4dp</dimen>
+    <dimen name="ime_key_bottom_padding">8dp</dimen>
+    <dimen name="ime_panel_height">214dp</dimen>
+    <dimen name="ime_preview_bubble_width">48dp</dimen>
+    <dimen name="ime_preview_bubble_height">56dp</dimen>
+</resources>

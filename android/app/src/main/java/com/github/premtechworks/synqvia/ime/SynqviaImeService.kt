@@ -1,6 +1,5 @@
 package com.github.premtechworks.synqvia.ime
 
-import android.content.ClipboardManager
 import android.content.Context
 import android.inputmethodservice.InputMethodService
 import android.os.Build
@@ -8,10 +7,13 @@ import android.view.ContextThemeWrapper
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
-import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.Toast
+import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.github.premtechworks.synqvia.SynqviaApp
@@ -28,9 +30,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Android InputMethodService implementing clipboard capture and clipboard history panel.
- * As an active IME, this service integrates with public ClipboardManager APIs and provides
- * a Gboard-like clipboard insertion UI.
+ * Android InputMethodService implementing QWERTY typing, symbols, and clipboard history panel.
+ * As an active IME, this service allows full typing while seamlessly providing clipboard
+ * insertion from a toggled panel that maintains identical height.
  */
 class SynqviaImeService : InputMethodService() {
 
@@ -45,6 +47,9 @@ class SynqviaImeService : InputMethodService() {
     private lateinit var adapter: ClipImeAdapter
     private var rvClips: RecyclerView? = null
     private var layoutEmpty: LinearLayout? = null
+    private var keyboardView: SynqviaKeyboardView? = null
+    private var currentEditorInfo: EditorInfo? = null
+    private var filterPinnedOnly: Boolean = false
 
     override fun onCreate() {
         super.onCreate()
@@ -56,20 +61,90 @@ class SynqviaImeService : InputMethodService() {
         syncPreferences = container.syncPreferences
     }
 
+    fun applyWindowNavBar(win: android.view.Window) {
+        val navColor = ContextCompat.getColor(this, R.color.ime_background)
+        win.navigationBarColor = navColor
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            win.isNavigationBarContrastEnforced = false
+        }
+        WindowCompat.getInsetsController(win, win.decorView).isAppearanceLightNavigationBars = false
+    }
+
+    override fun onConfigureWindow(win: android.view.Window, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
+        super.onConfigureWindow(win, isFullscreen, isCandidatesOnly)
+        applyWindowNavBar(win)
+    }
+
+    override fun onWindowShown() {
+        super.onWindowShown()
+        window?.window?.let { applyWindowNavBar(it) }
+    }
+
     override fun onCreateInputView(): View {
-        val view = layoutInflater.inflate(R.layout.ime_clipboard_view, null)
+        val kbView = SynqviaKeyboardView(this)
+        keyboardView = kbView
 
-        val btnSwitchKeyboard = view.findViewById<ImageButton>(R.id.btn_switch_keyboard)
-        val btnClose = view.findViewById<ImageButton>(R.id.btn_close_ime)
-        rvClips = view.findViewById(R.id.rv_ime_clips)
-        layoutEmpty = view.findViewById(R.id.layout_ime_empty)
+        window?.window?.let { applyWindowNavBar(it) }
 
-        btnSwitchKeyboard.setOnClickListener {
-            switchKeyboard()
+        ViewCompat.setOnApplyWindowInsetsListener(kbView) { view, windowInsets ->
+            val navBarInsets = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            val systemBarsInsets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            android.util.Log.d("SynqviaIME", "systemBars().bottom=${systemBarsInsets.bottom}, navBars=${navBarInsets.bottom}")
+            view.setPadding(
+                view.paddingLeft,
+                view.paddingTop,
+                view.paddingRight,
+                navBarInsets.bottom
+            )
+            windowInsets
         }
 
-        btnClose.setOnClickListener {
-            requestHideSelf(0)
+        val clipboardView = layoutInflater.inflate(
+            R.layout.ime_clipboard_view,
+            kbView.layoutClipboardContainer,
+            true
+        )
+        rvClips = clipboardView.findViewById(R.id.rv_ime_clips)
+        layoutEmpty = clipboardView.findViewById(R.id.layout_ime_empty)
+
+        kbView.actionListener = object : KeyboardActionListener {
+            override fun onText(text: String) {
+                currentInputConnection?.commitText(text, 1)
+            }
+
+            override fun onBackspace() {
+                handleBackspace()
+            }
+
+            override fun onBackspaceRepeat() {
+                handleBackspace()
+            }
+
+            override fun onEnter() {
+                handleEnter()
+            }
+
+            override fun onShiftChanged(state: ShiftState) {}
+
+            override fun onLayerChanged(layer: KeyboardLayer) {}
+
+            override fun onToggleClipboard() {
+                filterPinnedOnly = false
+                if (kbView.isClipboardActive) {
+                    startObservingClips()
+                }
+            }
+
+            override fun onToolbar2() {
+                filterPinnedOnly = kbView.isPinnedFilterActive
+                if (kbView.isClipboardActive) {
+                    startObservingClips()
+                }
+            }
+
+            override fun onOpenKeyboardPicker() {
+                switchKeyboard()
+            }
         }
 
         adapter = ClipImeAdapter(
@@ -90,13 +165,37 @@ class SynqviaImeService : InputMethodService() {
         rvClips?.layoutManager = LinearLayoutManager(this)
         rvClips?.adapter = adapter
 
-        return view
+        return kbView
+    }
+
+    override fun onComputeInsets(outInsets: Insets) {
+        super.onComputeInsets(outInsets)
+        val inputView = keyboardView ?: return
+        val loc = IntArray(2)
+        inputView.getLocationInWindow(loc)
+        val inputTop = loc[1]
+        outInsets.contentTopInsets = inputTop
+        outInsets.visibleTopInsets = inputTop
     }
 
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
+        currentEditorInfo = info
 
-        // As an active IME in the foreground, read primary clip safely
+        val kb = keyboardView
+        if (kb != null && info != null) {
+            val isNumeric = KeyboardState.isNumericInput(info.inputType)
+            val isPassword = KeyboardState.isPasswordInput(info.inputType)
+            kb.isPasswordMode = isPassword
+            kb.setLayer(if (isNumeric) KeyboardLayer.SYMBOLS_1 else KeyboardLayer.LETTERS)
+            kb.enterAction = KeyboardState.resolveEnterAction(info.imeOptions)
+
+            val capsMode = currentInputConnection?.getCursorCapsMode(info.inputType) ?: 0
+            kb.applyAutoCaps(capsMode)
+            kb.setClipboardPanelActive(false)
+        }
+
+        // Foreground sanctioned clipboard capture
         checkAndCapturePrimaryClip()
 
         // Start observing clips reactively
@@ -106,6 +205,37 @@ class SynqviaImeService : InputMethodService() {
     override fun onFinishInputView(finishingInput: Boolean) {
         observeClipsJob?.cancel()
         super.onFinishInputView(finishingInput)
+    }
+
+    private fun handleBackspace() {
+        val ic = currentInputConnection ?: return
+        val selected = ic.getSelectedText(0)
+        if (!selected.isNullOrEmpty()) {
+            ic.commitText("", 1)
+        } else {
+            val before = ic.getTextBeforeCursor(2, 0)
+            val count = KeyboardState.calculateBackspaceDeleteCount(before)
+            if (count > 0) {
+                ic.deleteSurroundingText(count, 0)
+            }
+        }
+    }
+
+    private fun handleEnter() {
+        val ic = currentInputConnection ?: return
+        val info = currentEditorInfo
+        val action = info?.imeOptions?.and(EditorInfo.IME_MASK_ACTION) ?: EditorInfo.IME_ACTION_NONE
+        val noEnterAction = (info?.imeOptions?.and(EditorInfo.IME_FLAG_NO_ENTER_ACTION) ?: 0) != 0
+        if (!noEnterAction && (action == EditorInfo.IME_ACTION_SEND ||
+                    action == EditorInfo.IME_ACTION_GO ||
+                    action == EditorInfo.IME_ACTION_SEARCH ||
+                    action == EditorInfo.IME_ACTION_DONE ||
+                    action == EditorInfo.IME_ACTION_NEXT)
+        ) {
+            ic.performEditorAction(action)
+        } else {
+            ic.commitText("\n", 1)
+        }
     }
 
     private fun checkAndCapturePrimaryClip() {
@@ -130,8 +260,9 @@ class SynqviaImeService : InputMethodService() {
 
             clipRepository.getImeClips(expiryDurationMs = expiryDurationMs, limit = 50)
                 .collect { clips ->
-                    adapter.submitList(clips)
-                    if (clips.isEmpty()) {
+                    val displayedClips = if (filterPinnedOnly) clips.filter { it.pinned } else clips
+                    adapter.submitList(displayedClips)
+                    if (displayedClips.isEmpty()) {
                         layoutEmpty?.visibility = View.VISIBLE
                         rvClips?.visibility = View.GONE
                     } else {
@@ -213,7 +344,6 @@ class SynqviaImeService : InputMethodService() {
             }
             popup.show()
         } catch (_: Exception) {
-            // In case themed popup fails on unusual OEM device, default to paste
             pasteClip(clip)
         }
     }

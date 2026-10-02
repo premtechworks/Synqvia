@@ -2,37 +2,88 @@ package com.github.premtechworks.synqvia.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Primary Cyan / Aqua Palette
-val CyanPrimary = Color(0xFF00E5FF)
+// ==========================================
+// Synqvia Redesign - Dark Navy & Cyan Palette
+// ==========================================
+
+// Screen Backgrounds (Vertical Gradient)
+val BgTop = Color(0xFF050B18)
+val BgBottom = Color(0xFF0A1428)
+
+// Surfaces & Containers
+val SurfaceDark = Color(0xFF101B2F)     // Cards
+val SurfaceInset = Color(0xFF0B1426)    // Panels nested inside cards, bottom nav bar
+val SurfaceHigh = Color(0xFF15233B)     // Circle icon buttons, unselected chips
+
+// Borders & Dividers
+val OutlineDark = Color(0xFF1F2D47)     // 1dp card borders
+val DividerDark = Color(0x0FFFFFFF)     // White @ 6% alpha (0x0F / 0xFF ~ 6%)
+
+// Typography Colors
+val TextPrimary = Color(0xFFFFFFFF)
+val TextSecondary = Color(0xFF8FA0BC)
+val TextTertiary = Color(0xFF7A8CAB)        // Raised to #7A8CAB (5:1 contrast on card surface)
+val DecorativeTertiary = Color(0xFF5F7191)  // Retained tone for purely decorative non-text elements
+
+// Primary Accent (Cyan)
+val PrimaryCyan = Color(0xFF12D4FF)
+val OnPrimaryCyan = Color(0xFF04111F)
+
+// Functional Accent Colors
+val AccentBlue = Color(0xFF3D8BFF)      // Sent / "To PC"
+val AccentGreen = Color(0xFF2BD97E)     // Received / "From PC" / Active
+val AccentRed = Color(0xFFFF4D5E)       // Loss / Delete / Error
+val AccentGold = Color(0xFFFFC21A)      // Pinned
+val AccentAmber = Color(0xFFF59E0B)     // Warnings / Connecting
+
+// Tint Helpers
+fun Color.tintedContainer(alpha: Float = 0.14f): Color = this.copy(alpha = alpha)
+fun Color.tintedBorder(alpha: Float = 0.35f): Color = this.copy(alpha = alpha)
+
+// Light Scheme Palette Tokens (Prompt 5)
+val PrimaryCyanLight = Color(0xFF12D4FF) // Cyan remains #12D4FF
+val TextPrimaryLight = Color(0xFF0B1426)
+val TextSecondaryLight = Color(0xFF5A6A85)
+val TextTertiaryLight = Color(0xFF8FA0BC)
+
+val SurfaceLight = Color(0xFFFFFFFF)
+val SurfaceInsetLight = Color(0xFFF4F6F9)
+val SurfaceHighLight = Color(0xFFE2E8F0)
+val OutlineLight = Color(0xFFE2E8F0)
+val DividerLight = Color(0x140B1426)
+
+val BgTopLight = Color(0xFFF4F6F9)
+val BgBottomLight = Color(0xFFF4F6F9)
+
+// ==========================================
+// Legacy / Backwards Compatibility Aliases
+// ==========================================
+val CyanPrimary = PrimaryCyan
 val CyanPrimaryDark = Color(0xFF00B0FF)
-val CyanGlow = Color(0x6600E5FF)
-val BlueAccent = Color(0xFF2979FF)
+val CyanGlow = PrimaryCyan.copy(alpha = 0.3f)
+val BlueAccent = AccentBlue
 val BlueDeep = Color(0xFF1565C0)
 
-// Liquid Glass Surfaces
-val DarkNavyBackground = Color(0xFF070D18)
-val DarkNavySurface = Color(0xFF0E1626)
-val GlassSurface = Color(0x1AFFFFFF)
-val GlassSurfaceElevated = Color(0x2EFFFFFF)
-val GlassSurfaceHover = Color(0x3DFFFFFF)
-val GlassBorder = Color(0x3800E5FF)
-val GlassBorderSubtle = Color(0x26FFFFFF)
+val DarkNavyBackground = BgTop
+val DarkNavySurface = SurfaceDark
+val GlassSurface = SurfaceDark
+val GlassSurfaceElevated = SurfaceHigh
+val GlassSurfaceHover = SurfaceHigh
+val GlassBorder = OutlineDark
+val GlassBorderSubtle = OutlineDark
 
-// Status Colors
-val StatusConnected = Color(0xFF00E676)
-val StatusConnectedGlow = Color(0x4400E676)
-val StatusRetrying = Color(0xFFFFB300)
-val StatusRetryingGlow = Color(0x44FFB300)
-val StatusOffline = Color(0xFFFF5252)
-val StatusOfflineGlow = Color(0x44FF5252)
-val StatusSyncing = Color(0xFF00E5FF)
+val StatusConnected = AccentGreen
+val StatusConnectedGlow = AccentGreen.copy(alpha = 0.3f)
+val StatusRetrying = AccentAmber
+val StatusRetryingGlow = AccentAmber.copy(alpha = 0.3f)
+val StatusOffline = AccentRed
+val StatusOfflineGlow = AccentRed.copy(alpha = 0.3f)
+val StatusSyncing = PrimaryCyan
 
-// Text Colors
-val TextHighEmphasis = Color(0xFFF1F5F9)
-val TextMediumEmphasis = Color(0xFF94A3B8)
-val TextDisabled = Color(0xFF64748B)
+val TextHighEmphasis = TextPrimary
+val TextMediumEmphasis = TextSecondary
+val TextDisabled = TextTertiary
 
-// Directional Badges
-val LocalSendColor = Color(0xFF38BDF8)
-val RemoteRecvColor = Color(0xFF34D399)
-val ConflictLoserColor = Color(0xFFF87171)
+val LocalSendColor = AccentBlue
+val RemoteRecvColor = AccentGreen
+val ConflictLoserColor = AccentRed

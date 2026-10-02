@@ -1,11 +1,8 @@
 package com.github.premtechworks.synqvia.ui
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import android.app.ActivityManager
+import android.content.Context
+import android.os.Build
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -16,72 +13,147 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.ProvidableCompositionLocal
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.github.premtechworks.synqvia.ui.theme.CyanGlow
-import com.github.premtechworks.synqvia.ui.theme.CyanPrimary
-import com.github.premtechworks.synqvia.ui.theme.GlassBorder
-import com.github.premtechworks.synqvia.ui.theme.GlassBorderSubtle
-import com.github.premtechworks.synqvia.ui.theme.GlassSurface
-import com.github.premtechworks.synqvia.ui.theme.GlassSurfaceElevated
-import com.github.premtechworks.synqvia.ui.theme.StatusConnected
-import com.github.premtechworks.synqvia.ui.theme.StatusConnectedGlow
-import com.github.premtechworks.synqvia.ui.theme.StatusOffline
-import com.github.premtechworks.synqvia.ui.theme.StatusOfflineGlow
-import com.github.premtechworks.synqvia.ui.theme.StatusRetrying
-import com.github.premtechworks.synqvia.ui.theme.StatusRetryingGlow
+import com.github.premtechworks.synqvia.ui.theme.OutlineDark
+import com.github.premtechworks.synqvia.ui.theme.PrimaryCyan
+import com.github.premtechworks.synqvia.ui.theme.SurfaceDark
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
 
 /**
- * Liquid Glass Card container with frosted sheen, soft border glow, and depth shadow
+ * Composition locals for Haze frosted glass hierarchy.
+ */
+val LocalHazeState: ProvidableCompositionLocal<HazeState?> = compositionLocalOf { null }
+val LocalIsBlurSupported: ProvidableCompositionLocal<Boolean> = compositionLocalOf { false }
+
+/**
+ * Checks if frosted blur effects can run within budget.
+ * Supported on API 31+ with hardware RenderNode blur, and disabled on low-RAM devices.
+ */
+fun isBlurSupported(context: Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
+    val am = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+    if (am != null && am.isLowRamDevice) return false
+    return true
+}
+
+/**
+ * Glass material styles:
+ * - Bottom Bar: blur 24dp, tint #0B1426 @ 72%
+ * - Sticky Header: blur 24dp, tint #0B1426 @ 72%
+ * - Card: blur 32dp, tint #16233B @ 62%, noise 0.04
+ */
+val BottomBarGlassStyle = HazeStyle(
+    blurRadius = 24.dp,
+    tint = HazeTint(Color(0xFF0B1426).copy(alpha = 0.72f)),
+    fallbackTint = HazeTint(Color(0xFF0B1426))
+)
+
+val HeaderGlassStyle = HazeStyle(
+    blurRadius = 24.dp,
+    tint = HazeTint(Color(0xFF0B1426).copy(alpha = 0.72f)),
+    fallbackTint = HazeTint(Color(0xFF0B1426))
+)
+
+val CardGlassStyle = HazeStyle(
+    blurRadius = 32.dp,
+    tint = HazeTint(Color(0xFF16233B).copy(alpha = 0.62f)),
+    noiseFactor = 0.04f,
+    fallbackTint = HazeTint(Color(0xFF16233B))
+)
+
+/**
+ * Vertical 1dp border gradient for frosted glass cards (white 22% -> 6%).
+ */
+val GlassCardBorderBrush = Brush.verticalGradient(
+    colors = listOf(
+        Color.White.copy(alpha = 0.22f),
+        Color.White.copy(alpha = 0.06f)
+    )
+)
+
+/**
+ * Soft drop shadow matching CSS: `0 24dp 48dp rgba(0, 0, 0, 0.45)`
+ */
+fun Modifier.softCardShadow(
+    offsetY: Dp = 24.dp,
+    blurRadius: Dp = 48.dp,
+    color: Color = Color.Black.copy(alpha = 0.45f),
+    cornerRadius: Dp = 24.dp
+): Modifier = this.drawBehind {
+    if (color.alpha <= 0f) return@drawBehind
+    drawIntoCanvas { canvas ->
+        val paint = android.graphics.Paint().apply {
+            this.color = android.graphics.Color.TRANSPARENT
+            setShadowLayer(
+                blurRadius.toPx(),
+                0f,
+                offsetY.toPx(),
+                color.toArgb()
+            )
+        }
+        val r = cornerRadius.toPx()
+        canvas.nativeCanvas.drawRoundRect(
+            0f, 0f, size.width, size.height,
+            r, r,
+            paint
+        )
+    }
+}
+
+/**
+ * Modifier to apply glass frosted blur if supported, or solid fallback color if not.
+ */
+fun Modifier.synqviaGlass(
+    hazeState: HazeState?,
+    style: HazeStyle,
+    isBlurSupported: Boolean,
+    fallbackColor: Color = Color(0xFF16233B),
+    shape: Shape? = null
+): Modifier {
+    val clipped = if (shape != null) this.clip(shape) else this
+    return if (isBlurSupported && hazeState != null) {
+        clipped.hazeEffect(state = hazeState, style = style)
+    } else {
+        clipped.background(fallbackColor)
+    }
+}
+
+/**
+ * Card container with flat dark-navy surface, 16dp rounded corners, and thin outline border.
  */
 @Composable
 fun LiquidGlassCard(
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(24.dp),
-    backgroundColor: Color = GlassSurface,
-    borderColor: Color = GlassBorder,
+    shape: Shape = RoundedCornerShape(16.dp),
+    backgroundColor: Color = SurfaceDark,
+    borderColor: Color = OutlineDark,
     borderWidth: Dp = 1.dp,
-    elevation: Dp = 6.dp,
+    elevation: Dp = 0.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
     Surface(
         modifier = modifier
-            .shadow(
-                elevation = elevation,
-                shape = shape,
-                ambientColor = CyanGlow,
-                spotColor = Color.Black
-            )
             .clip(shape)
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        backgroundColor,
-                        backgroundColor.copy(alpha = (backgroundColor.alpha * 0.7f).coerceAtLeast(0.05f))
-                    )
-                )
-            )
-            .border(
-                width = borderWidth,
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        borderColor,
-                        GlassBorderSubtle,
-                        borderColor.copy(alpha = 0.15f)
-                    )
-                ),
-                shape = shape
-            ),
+            .background(backgroundColor)
+            .border(borderWidth, borderColor, shape),
         color = Color.Transparent,
         contentColor = MaterialTheme.colorScheme.onSurface
     ) {
@@ -90,83 +162,53 @@ fun LiquidGlassCard(
 }
 
 /**
- * Pulsing animated liquid glow ring for status indicators
+ * Clean status indicator dot with a soft subtle aura.
  */
 @Composable
 fun GlowingStatusDot(
     statusColor: Color,
-    glowColor: Color,
+    glowColor: Color = statusColor.copy(alpha = 0.25f),
     modifier: Modifier = Modifier,
-    size: Dp = 14.dp
+    size: Dp = 12.dp
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 1.0f,
-        targetValue = 1.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "pulseScale"
-    )
-    val pulseAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.7f,
-        targetValue = 0.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "pulseAlpha"
-    )
-
     Box(
-        modifier = modifier.size(size * 2),
+        modifier = modifier.size(size * 1.5f),
         contentAlignment = Alignment.Center
     ) {
-        // Outer pulsing wave
         Box(
             modifier = Modifier
-                .size(size * pulseScale)
-                .clip(CircleShape)
-                .background(glowColor.copy(alpha = pulseAlpha))
-        )
-        // Static aura
-        Box(
-            modifier = Modifier
-                .size(size * 1.35f)
+                .size(size * 1.5f)
                 .clip(CircleShape)
                 .background(glowColor)
         )
-        // Core glowing dot
         Box(
             modifier = Modifier
                 .size(size)
                 .clip(CircleShape)
                 .background(statusColor)
-                .border(1.5.dp, Color.White.copy(alpha = 0.6f), CircleShape)
         )
     }
 }
 
 /**
- * Glass pill badge for chip labels and counters
+ * Pill badge for chip labels and counters with 14% container tint and 35% border.
  */
 @Composable
 fun GlassPillBadge(
     text: String,
     modifier: Modifier = Modifier,
-    accentColor: Color = CyanPrimary,
+    accentColor: Color = PrimaryCyan,
     textColor: Color = Color.White
 ) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
-            .background(accentColor.copy(alpha = 0.15f))
+            .background(accentColor.copy(alpha = 0.14f))
             .border(1.dp, accentColor.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
             .padding(horizontal = 10.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {
-        androidx.compose.material3.Text(
+        Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
             color = textColor

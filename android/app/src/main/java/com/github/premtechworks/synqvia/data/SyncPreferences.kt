@@ -38,6 +38,114 @@ class SyncPreferences(context: Context) {
             _appIconFlow.value = value
         }
 
+    // Auto Sync (default ON)
+    private val _autoSyncFlow = MutableStateFlow(prefs.getBoolean(KEY_AUTO_SYNC, true))
+    val autoSyncFlow: StateFlow<Boolean> = _autoSyncFlow.asStateFlow()
+
+    var autoSync: Boolean
+        get() = prefs.getBoolean(KEY_AUTO_SYNC, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_AUTO_SYNC, value).apply()
+            _autoSyncFlow.value = value
+        }
+
+    // Sync Text Only (default ON)
+    private val _syncTextOnlyFlow = MutableStateFlow(prefs.getBoolean(KEY_SYNC_TEXT_ONLY, true))
+    val syncTextOnlyFlow: StateFlow<Boolean> = _syncTextOnlyFlow.asStateFlow()
+
+    var syncTextOnly: Boolean
+        get() = prefs.getBoolean(KEY_SYNC_TEXT_ONLY, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_SYNC_TEXT_ONLY, value).apply()
+            _syncTextOnlyFlow.value = value
+        }
+
+    // Clear on Device Disconnect (default OFF)
+    private val _clearOnDisconnectFlow = MutableStateFlow(prefs.getBoolean(KEY_CLEAR_ON_DISCONNECT, false))
+    val clearOnDisconnectFlow: StateFlow<Boolean> = _clearOnDisconnectFlow.asStateFlow()
+
+    var clearOnDisconnect: Boolean
+        get() = prefs.getBoolean(KEY_CLEAR_ON_DISCONNECT, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_CLEAR_ON_DISCONNECT, value).apply()
+            _clearOnDisconnectFlow.value = value
+        }
+
+    // Theme Mode ("system" | "light" | "dark", default "system")
+    private val _themeModeFlow = MutableStateFlow(prefs.getString(KEY_THEME_MODE, "system") ?: "system")
+    val themeModeFlow: StateFlow<String> = _themeModeFlow.asStateFlow()
+
+    var themeMode: String
+        get() = prefs.getString(KEY_THEME_MODE, "system") ?: "system"
+        set(value) {
+            prefs.edit().putString(KEY_THEME_MODE, value).apply()
+            _themeModeFlow.value = value
+        }
+
+    // Use Dynamic Color (default OFF)
+    private val _dynamicColorFlow = MutableStateFlow(prefs.getBoolean(KEY_DYNAMIC_COLOR, false))
+    val dynamicColorFlow: StateFlow<Boolean> = _dynamicColorFlow.asStateFlow()
+
+    var dynamicColor: Boolean
+        get() = prefs.getBoolean(KEY_DYNAMIC_COLOR, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_DYNAMIC_COLOR, value).apply()
+            _dynamicColorFlow.value = value
+        }
+
+    // Onboarding Done (default false)
+    private val _onboardingDoneFlow = MutableStateFlow(prefs.getBoolean(KEY_ONBOARDING_DONE, false))
+    val onboardingDoneFlow: StateFlow<Boolean> = _onboardingDoneFlow.asStateFlow()
+
+    var onboardingDone: Boolean
+        get() = prefs.getBoolean(KEY_ONBOARDING_DONE, false)
+        set(value) {
+            prefs.edit().putBoolean(KEY_ONBOARDING_DONE, value).apply()
+            _onboardingDoneFlow.value = value
+        }
+
+    // Reduce Motion: follow system (default ON)
+    private val _reduceMotionFollowSystemFlow = MutableStateFlow(prefs.getBoolean(KEY_REDUCE_MOTION, true))
+    val reduceMotionFollowSystemFlow: StateFlow<Boolean> = _reduceMotionFollowSystemFlow.asStateFlow()
+
+    var reduceMotionFollowSystem: Boolean
+        get() = prefs.getBoolean(KEY_REDUCE_MOTION, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_REDUCE_MOTION, value).apply()
+            _reduceMotionFollowSystemFlow.value = value
+        }
+
+    // Haptic Feedback (default ON)
+    private val _hapticFeedbackFlow = MutableStateFlow(prefs.getBoolean(KEY_HAPTIC_FEEDBACK, true))
+    val hapticFeedbackFlow: StateFlow<Boolean> = _hapticFeedbackFlow.asStateFlow()
+
+    var hapticFeedback: Boolean
+        get() = prefs.getBoolean(KEY_HAPTIC_FEEDBACK, true)
+        set(value) {
+            prefs.edit().putBoolean(KEY_HAPTIC_FEEDBACK, value).apply()
+            _hapticFeedbackFlow.value = value
+        }
+
+    // Keyboard warning snooze timestamp (ms) - hides the warning for 7 days when 'Later' is clicked
+    private val _keyboardWarningSnoozedUntilFlow = MutableStateFlow(prefs.getLong(KEY_KEYBOARD_WARNING_SNOOZED_UNTIL, 0L))
+    val keyboardWarningSnoozedUntilFlow: StateFlow<Long> = _keyboardWarningSnoozedUntilFlow.asStateFlow()
+
+    var keyboardWarningSnoozedUntil: Long
+        get() = prefs.getLong(KEY_KEYBOARD_WARNING_SNOOZED_UNTIL, 0L)
+        set(value) {
+            prefs.edit().putLong(KEY_KEYBOARD_WARNING_SNOOZED_UNTIL, value).apply()
+            _keyboardWarningSnoozedUntilFlow.value = value
+        }
+
+    fun snoozeKeyboardWarning(days: Int = 7) {
+        val until = System.currentTimeMillis() + days * 24L * 60L * 60L * 1000L
+        keyboardWarningSnoozedUntil = until
+    }
+
+    fun isKeyboardWarningSnoozed(now: Long = System.currentTimeMillis()): Boolean {
+        return now < keyboardWarningSnoozedUntil
+    }
+
     fun getConfig(): SyncConfig = _configFlow.value
 
     fun updateConfig(
@@ -57,6 +165,9 @@ class SyncPreferences(context: Context) {
         _configFlow.value = loadConfig()
         return true
     }
+
+    fun updateConfig(config: SyncConfig): Boolean =
+        updateConfig(config.pcMac, config.channel, config.historyCap, config.deviceName)
 
     private fun loadConfig(): SyncConfig {
         val pcMac = prefs.getString(KEY_PC_MAC, "") ?: ""
@@ -85,6 +196,16 @@ class SyncPreferences(context: Context) {
     companion object {
         const val KEY_USER_STOPPED = "user_stopped"
         const val KEY_APP_ICON = "app_icon"
+        const val KEY_AUTO_SYNC = "auto_sync"
+        const val KEY_SYNC_TEXT_ONLY = "sync_text_only"
+        const val KEY_CLEAR_ON_DISCONNECT = "clear_on_disconnect"
+        const val KEY_THEME_MODE = "theme_mode"
+        const val KEY_DYNAMIC_COLOR = "dynamic_color"
+        const val KEY_ONBOARDING_DONE = "onboarding_done"
+        const val KEY_REDUCE_MOTION = "reduce_motion"
+        const val KEY_HAPTIC_FEEDBACK = "haptic_feedback"
+        const val KEY_KEYBOARD_WARNING_SNOOZED_UNTIL = "keyboard_warning_snoozed_until"
+
         private const val KEY_PC_MAC = "pc_mac"
         private const val KEY_CHANNEL = "channel"
         private const val KEY_CAP = "history_cap"

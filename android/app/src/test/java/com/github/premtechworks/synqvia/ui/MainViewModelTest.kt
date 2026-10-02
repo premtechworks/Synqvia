@@ -62,4 +62,13 @@ class MainViewModelTest {
         viewModel.syncNow()
         assertEquals("Sync service is stopped. Start service first.", viewModel.userMessage.value)
     }
+
+    @Test
+    fun snoozeKeyboardWarning_setsTimestampAndHidesWarning() {
+        syncPreferences.keyboardWarningSnoozedUntil = 0L
+        assertFalse(syncPreferences.isKeyboardWarningSnoozed())
+        viewModel.snoozeKeyboardWarning()
+        assertTrue(syncPreferences.isKeyboardWarningSnoozed())
+        assertTrue(syncPreferences.keyboardWarningSnoozedUntil > System.currentTimeMillis() + 6 * 24 * 3600 * 1000L)
+    }
 }

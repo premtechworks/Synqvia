@@ -169,7 +169,7 @@ class ClipboardCaptureManager(
             if (text.isBlank()) return@withContext null
 
             val isSensitive = sensitiveClassifier.isSensitive(clipData)
-            captureLocalClip(text = text, isSensitive = isSensitive)
+            captureLocalClip(text = text, isSensitive = isSensitive, isExplicit = false)
         } catch (_: SecurityException) {
             // Android 10+ background restriction or OEM restriction
             null
@@ -187,7 +187,8 @@ class ClipboardCaptureManager(
     suspend fun captureLocalClip(
         text: String,
         isSensitive: Boolean = false,
-        pinned: Boolean = false
+        pinned: Boolean = false,
+        isExplicit: Boolean = false
     ): ClipEntity? = withContext(ioDispatcher) {
         if (text.isBlank()) return@withContext null
 
@@ -229,8 +230,10 @@ class ClipboardCaptureManager(
             return@withContext null
         }
 
-        // 5. Hand off to outbound transport (ClipSyncService)
-        outboundListener?.onClipCaptured(clipMsg)
+        // 5. Hand off to outbound transport (ClipSyncService) if autoSync is ON or explicitly requested
+        if (isExplicit || syncPreferences.autoSync) {
+            outboundListener?.onClipCaptured(clipMsg)
+        }
 
         entity
     }
@@ -266,7 +269,7 @@ class ClipboardCaptureManager(
     }
 
     /**
-     * Set local clipboard without triggering re-broadcast (e.g. user taps "Copy" in history).
+     * Set local clipboard without triggering re-broadcast (e.g. user taps "Copy" in history, or clearOnDisconnect).
      */
     suspend fun copyToClipboardWithoutBroadcast(
         text: String,
@@ -276,14 +279,18 @@ class ClipboardCaptureManager(
         return withContext(mainDispatcher) {
             try {
                 val cm = clipboardManager ?: return@withContext false
-                val clipData = ClipData.newPlainText("Synqvia", text)
-                if (isSensitive && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    val bundle = PersistableBundle().apply {
-                        putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+                if (text.isEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    cm.clearPrimaryClip()
+                } else {
+                    val clipData = ClipData.newPlainText("Synqvia", text)
+                    if (isSensitive && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        val bundle = PersistableBundle().apply {
+                            putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+                        }
+                        clipData.description.extras = bundle
                     }
-                    clipData.description.extras = bundle
+                    cm.setPrimaryClip(clipData)
                 }
-                cm.setPrimaryClip(clipData)
                 true
             } catch (_: Exception) {
                 false

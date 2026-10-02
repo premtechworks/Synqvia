@@ -39,7 +39,16 @@ import java.util.Locale
 
 import android.os.Build
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
+import java.util.concurrent.ConcurrentHashMap
+
+data class UndoDeleteEvent(
+    val clipId: String,
+    val message: String = "Clip deleted"
+)
 
 enum class ClipFilter {
     ALL, SENT, RECEIVED, CONFLICTS, PINNED
@@ -50,6 +59,21 @@ enum class MainTab(val title: String) {
     HISTORY("History"),
     SETUP("Setup"),
     SETTINGS("Settings")
+}
+
+object AppRoutes {
+    const val ONBOARDING = "onboarding"
+    const val PAIR = "pair"
+    const val MAIN = "main"
+    const val IME_SETTINGS = "ime_settings"
+
+    fun resolveStartDestination(onboardingDone: Boolean, pcMac: String?): String {
+        return when {
+            !onboardingDone -> ONBOARDING
+            pcMac.isNullOrBlank() -> PAIR
+            else -> MAIN
+        }
+    }
 }
 
 data class LogItem(
@@ -81,6 +105,162 @@ class MainViewModel(
     val config: StateFlow<SyncConfig> = syncPreferences.configFlow
     val appIcon: StateFlow<String> = syncPreferences.appIconFlow
 
+    val autoSync: StateFlow<Boolean> = syncPreferences.autoSyncFlow
+    val syncTextOnly: StateFlow<Boolean> = syncPreferences.syncTextOnlyFlow
+    val clearOnDisconnect: StateFlow<Boolean> = syncPreferences.clearOnDisconnectFlow
+    val themeMode: StateFlow<String> = syncPreferences.themeModeFlow
+    val dynamicColor: StateFlow<Boolean> = syncPreferences.dynamicColorFlow
+    val reduceMotionFollowSystem: StateFlow<Boolean> = syncPreferences.reduceMotionFollowSystemFlow
+    val hapticFeedback: StateFlow<Boolean> = syncPreferences.hapticFeedbackFlow
+
+    private val _selectedClipForDetail = MutableStateFlow<ClipEntity?>(null)
+    val selectedClipForDetail: StateFlow<ClipEntity?> = _selectedClipForDetail.asStateFlow()
+
+    fun selectClipForDetail(clip: ClipEntity?) {
+        _selectedClipForDetail.value = clip
+    }
+
+    val onboardingDone: StateFlow<Boolean> = syncPreferences.onboardingDoneFlow
+
+    private val _currentRoute = MutableStateFlow(
+        AppRoutes.resolveStartDestination(
+            onboardingDone = syncPreferences.onboardingDone,
+            pcMac = syncPreferences.getConfig().pcMac
+        )
+    )
+    val currentRoute: StateFlow<String> = _currentRoute.asStateFlow()
+
+    private var previousRoute: String? = null
+
+    fun navigateTo(route: String) {
+        previousRoute = _currentRoute.value
+        _currentRoute.value = route
+    }
+
+    fun navigateBack() {
+        val prev = previousRoute
+        if (prev != null && prev != _currentRoute.value) {
+            _currentRoute.value = prev
+        } else {
+            if (!syncPreferences.onboardingDone) {
+                _currentRoute.value = AppRoutes.ONBOARDING
+            } else {
+                _currentRoute.value = AppRoutes.MAIN
+            }
+        }
+    }
+
+    fun setOnboardingDone(done: Boolean = true) {
+        syncPreferences.onboardingDone = done
+    }
+
+    fun setAutoSync(enabled: Boolean) {
+        syncPreferences.autoSync = enabled
+        addLog("INFO", "Auto Sync ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun setSyncTextOnly(enabled: Boolean) {
+        if (!enabled) {
+            syncPreferences.syncTextOnly = true
+            _userMessage.value = "Non-text sync coming in a future update"
+        } else {
+            syncPreferences.syncTextOnly = true
+        }
+    }
+
+    fun setClearOnDisconnect(enabled: Boolean) {
+        syncPreferences.clearOnDisconnect = enabled
+        addLog("INFO", "Clear on Device Disconnect ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun setThemeMode(mode: String) {
+        syncPreferences.themeMode = mode
+        addLog("INFO", "Theme mode set to: $mode")
+    }
+
+    fun setDynamicColor(enabled: Boolean) {
+        syncPreferences.dynamicColor = enabled
+        addLog("INFO", "Dynamic color ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun setReduceMotionFollowSystem(enabled: Boolean) {
+        syncPreferences.reduceMotionFollowSystem = enabled
+        addLog("INFO", "Reduce Motion (follow system) ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    fun setHapticFeedback(enabled: Boolean) {
+        syncPreferences.hapticFeedback = enabled
+        addLog("INFO", "Haptic Feedback ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    private var channelDebounceJob: Job? = null
+
+    fun updateChannel(newChannel: Int) {
+        val currentConfig = config.value
+        val clamped = newChannel.coerceIn(1, 30)
+        if (clamped == currentConfig.channel) return
+        syncPreferences.updateConfig(
+            pcMac = currentConfig.pcMac,
+            channel = clamped,
+            historyCap = currentConfig.historyCap,
+            deviceName = currentConfig.deviceName
+        )
+        channelDebounceJob?.cancel()
+        channelDebounceJob = viewModelScope.launch {
+            delay(600L)
+            _userMessage.value = "Saved. Reconnecting…"
+            addLog("INFO", "RFCOMM Channel changed to $clamped. Reconnecting…")
+            reconnect()
+        }
+    }
+
+    fun updateMac(newMac: String): Boolean {
+        val cleanMac = newMac.trim().uppercase(Locale.ROOT)
+        if (!SyncPreferences.isValidMac(cleanMac) && cleanMac.isNotBlank()) {
+            return false
+        }
+        val currentConfig = config.value
+        val macChanged = currentConfig.pcMac != cleanMac
+        syncPreferences.updateConfig(
+            pcMac = cleanMac,
+            channel = currentConfig.channel,
+            historyCap = currentConfig.historyCap,
+            deviceName = currentConfig.deviceName
+        )
+        if (macChanged) {
+            _userMessage.value = "Saved. Reconnecting…"
+            addLog("INFO", "PC MAC updated to $cleanMac. Reconnecting…")
+            reconnect()
+        }
+        return true
+    }
+
+    fun updateDeviceName(newName: String) {
+        val currentConfig = config.value
+        val trimmed = newName.trim().take(48)
+        if (trimmed == currentConfig.deviceName) return
+        syncPreferences.updateConfig(
+            pcMac = currentConfig.pcMac,
+            channel = currentConfig.channel,
+            historyCap = currentConfig.historyCap,
+            deviceName = trimmed
+        )
+        addLog("INFO", "Device broadcast name updated to: $trimmed")
+    }
+
+    fun updateHistoryCapacity(newCap: Int) {
+        val currentConfig = config.value
+        val clamped = newCap.coerceAtLeast(0)
+        if (clamped == currentConfig.historyCap) return
+        syncPreferences.updateConfig(
+            pcMac = currentConfig.pcMac,
+            channel = currentConfig.channel,
+            historyCap = clamped,
+            deviceName = currentConfig.deviceName
+        )
+        addLog("INFO", "History capacity updated to: ${if (clamped == 0) "Unlimited" else "$clamped items"}")
+    }
+
     fun setAppIcon(icon: String) {
         syncPreferences.appIcon = icon
         AppIconManager.setAppIcon(getApplication(), icon)
@@ -94,6 +274,21 @@ class MainViewModel(
 
     private val _isDefaultIme = MutableStateFlow(defaultImeDetector.isSynqviaDefaultIme())
     val isDefaultIme: StateFlow<Boolean> = _isDefaultIme.asStateFlow()
+
+    val isKeyboardWarningVisible: StateFlow<Boolean> = combine(
+        _isDefaultIme,
+        syncPreferences.keyboardWarningSnoozedUntilFlow
+    ) { isDefault, snoozedUntil ->
+        !isDefault && System.currentTimeMillis() >= snoozedUntil
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000L),
+        initialValue = !_isDefaultIme.value && !syncPreferences.isKeyboardWarningSnoozed()
+    )
+
+    fun snoozeKeyboardWarning() {
+        syncPreferences.snoozeKeyboardWarning(days = 7)
+    }
 
     private val imeObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) {
@@ -143,17 +338,37 @@ class MainViewModel(
     )
     val diagnosticLogs: StateFlow<List<LogItem>> = _diagnosticLogs.asStateFlow()
 
-    // Reactive clips stream with real-time search & filter
+    // Soft-delete tracking & Undo state
+    private val _pendingDeletedClipIds = MutableStateFlow<Set<String>>(emptySet())
+    val pendingDeletedClipIds: StateFlow<Set<String>> = _pendingDeletedClipIds.asStateFlow()
+
+    private val _undoDeleteEvent = MutableStateFlow<UndoDeleteEvent?>(null)
+    val undoDeleteEvent: StateFlow<UndoDeleteEvent?> = _undoDeleteEvent.asStateFlow()
+
+    private val pendingDeleteJobs = ConcurrentHashMap<String, Job>()
+
+    // Loading state for skeleton placeholder on first composition
+    val isClipsLoading: StateFlow<Boolean> = _searchQuery.flatMapLatest { query ->
+        clipRepository.searchClips(query)
+    }.map { false }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000L),
+        initialValue = true
+    )
+
+    // Reactive clips stream with real-time search & filter (excluding soft-deleted clips)
     val filteredClips: StateFlow<List<ClipEntity>> = combine(
         _searchQuery.flatMapLatest { query -> clipRepository.searchClips(query) },
-        _filter
-    ) { clips, currentFilter ->
+        _filter,
+        _pendingDeletedClipIds
+    ) { clips, currentFilter, pendingDeleted ->
+        val visibleClips = if (pendingDeleted.isEmpty()) clips else clips.filter { it.id !in pendingDeleted }
         when (currentFilter) {
-            ClipFilter.ALL -> clips
-            ClipFilter.SENT -> clips.filter { it.isLocal }
-            ClipFilter.RECEIVED -> clips.filter { it.isRemote }
-            ClipFilter.CONFLICTS -> clips.filter { it.conflictLoser }
-            ClipFilter.PINNED -> clips.filter { it.pinned }
+            ClipFilter.ALL -> visibleClips
+            ClipFilter.SENT -> visibleClips.filter { it.isLocal }
+            ClipFilter.RECEIVED -> visibleClips.filter { it.isRemote }
+            ClipFilter.CONFLICTS -> visibleClips.filter { it.conflictLoser }
+            ClipFilter.PINNED -> visibleClips.filter { it.pinned }
         }
     }.stateIn(
         scope = viewModelScope,
@@ -193,12 +408,20 @@ class MainViewModel(
         _userMessage.value = null
     }
 
+    fun showUserMessage(message: String) {
+        _userMessage.value = message
+    }
+
     fun addLog(level: String, message: String) {
         val newItem = LogItem(level = level, message = message)
         val current = _diagnosticLogs.value.toMutableList()
         if (current.size > 200) current.removeAt(0)
         current.add(newItem)
         _diagnosticLogs.value = current
+    }
+
+    fun clearLogs() {
+        _diagnosticLogs.value = emptyList()
     }
 
     fun syncNow() {
@@ -292,11 +515,45 @@ class MainViewModel(
         }
     }
 
-    fun deleteClip(id: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            clipRepository.deleteClip(id)
-            addLog("INFO", "Deleted clip $id")
+    fun deleteClip(id: String, timeoutMillis: Long = 6000L) {
+        // Cancel existing pending job for this clip if any
+        pendingDeleteJobs.remove(id)?.cancel()
+        _pendingDeletedClipIds.update { it + id }
+        _undoDeleteEvent.value = UndoDeleteEvent(clipId = id, message = "Clip deleted")
+        addLog("INFO", "Soft-deleted clip $id (undo window active)")
+
+        val job = viewModelScope.launch(Dispatchers.IO) {
+            delay(timeoutMillis)
+            // Timeout expired, commit deletion to repository
+            try {
+                clipRepository.deleteClip(id)
+                addLog("INFO", "Committed deletion of clip $id")
+            } finally {
+                _pendingDeletedClipIds.update { it - id }
+                pendingDeleteJobs.remove(id)
+                if (_undoDeleteEvent.value?.clipId == id) {
+                    _undoDeleteEvent.value = null
+                }
+            }
         }
+        pendingDeleteJobs[id] = job
+    }
+
+    fun undoDelete(id: String? = null) {
+        val targetId = id ?: _undoDeleteEvent.value?.clipId
+        if (targetId != null) {
+            val job = pendingDeleteJobs.remove(targetId)
+            job?.cancel()
+            _pendingDeletedClipIds.update { it - targetId }
+            if (_undoDeleteEvent.value?.clipId == targetId) {
+                _undoDeleteEvent.value = null
+            }
+            addLog("INFO", "Restored clip $targetId via Undo")
+        }
+    }
+
+    fun clearUndoDeleteEvent() {
+        _undoDeleteEvent.value = null
     }
 
     fun clearHistory() {

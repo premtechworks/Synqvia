@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/layout_ime_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/ime_background"
+    android:orientation="vertical">
+
+    <!-- 44dp Toolbar (bg #0B1426) -->
+    <LinearLayout
+        android:id="@+id/layout_ime_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:background="@color/ime_toolbar_background"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp">
+
+        <!-- Left: Logo mark 22dp + "Synqvia" 15sp SemiBold white, 8dp gap -->
+        <ImageView
+            android:id="@+id/iv_ime_logo"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            android:contentDescription="Synqvia Logo"
+            android:src="@drawable/ic_synqvia_logo_mark" />
+
+        <TextView
+            android:id="@+id/tv_ime_brand"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="Synqvia"
+            android:textColor="@color/white"
+            android:textSize="15sp"
+            android:fontFamily="@font/inter_variable"
+            android:fontVariationSettings="'wght' 600, 'opsz' 15" />
+
+        <!-- Right: 3 Toolbar Action Buttons (40x40dp, 10dp radius, 4dp gap, 22dp icon) -->
+        <ImageButton
+            android:id="@+id/btn_ime_clipboard"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_ime_toolbar_button"
+            android:contentDescription="Clipboard panel"
+            android:padding="9dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_ime_toolbar_clipboard" />
+
+        <ImageButton
+            android:id="@+id/btn_ime_pinned"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/bg_ime_toolbar_button"
+            android:contentDescription="Pinned clips"
+            android:padding="9dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_ime_pin" />
+
+        <ImageButton
+            android:id="@+id/btn_ime_picker"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/bg_ime_toolbar_button"
+            android:contentDescription="Switch input method"
+            android:padding="9dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_ime_keyboard" />
+    </LinearLayout>
+
+    <!-- 1dp hairline divider -->
+    <View
+        android:id="@+id/divider_ime_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/ime_divider" />
+
+    <!-- Content Area (wrap_content computed height) -->
+    <FrameLayout
+        android:id="@+id/layout_ime_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <!-- Keyboard Keys Container -->
+        <LinearLayout
+            android:id="@+id/layout_keys_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="@dimen/ime_key_side_padding"
+            android:paddingTop="8dp"
+            android:paddingEnd="@dimen/ime_key_side_padding"
+            android:paddingBottom="8dp" />
+
+        <!-- Clipboard Panel Container -->
+        <FrameLayout
+            android:id="@+id/layout_clipboard_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+    </FrameLayout>
+</LinearLayout>

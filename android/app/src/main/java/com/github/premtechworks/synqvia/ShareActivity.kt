@@ -45,6 +45,7 @@ import com.github.premtechworks.synqvia.ui.LiquidGlassCard
 import com.github.premtechworks.synqvia.ui.theme.CyanPrimary
 import com.github.premtechworks.synqvia.ui.theme.DarkNavySurface
 import com.github.premtechworks.synqvia.ui.theme.SynqviaTheme
+import com.github.premtechworks.synqvia.ui.theme.SynqviaType
 import com.github.premtechworks.synqvia.ui.theme.StatusConnected
 import kotlinx.coroutines.delay
 
@@ -132,7 +133,7 @@ private fun ShareOverlayDialog(text: String, onDismiss: () -> Unit) {
 
                 Text(
                     text = if (sent) "Sent to Linux PC!" else "Broadcasting to PC...",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    style = SynqviaType.Headline,
                     color = Color.White
                 )
 
@@ -147,7 +148,7 @@ private fun ShareOverlayDialog(text: String, onDismiss: () -> Unit) {
                     ) {
                         Text(
                             text = text,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = SynqviaType.Footnote,
                             color = Color(0xFFCBD5E1),
                             maxLines = 3,
                             overflow = TextOverflow.Ellipsis

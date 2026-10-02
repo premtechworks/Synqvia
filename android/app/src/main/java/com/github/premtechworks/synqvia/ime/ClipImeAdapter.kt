@@ -78,21 +78,21 @@ class ClipImeAdapter(
             val isRemote = clip.direction == "remote"
             if (isRemote) {
                 tvSource.text = "PC"
-                tvSource.setTextColor(Color.parseColor("#818CF8")) // Indigo
-                tvSource.setBackgroundColor(Color.parseColor("#22818CF8"))
+                tvSource.setTextColor(ContextCompat.getColor(context, R.color.ime_source_pc_text))
+                tvSource.setBackgroundResource(R.drawable.bg_ime_pill_pc)
             } else {
                 tvSource.text = "Local"
-                tvSource.setTextColor(Color.parseColor("#00E5FF")) // Cyan
-                tvSource.setBackgroundColor(Color.parseColor("#2200E5FF"))
+                tvSource.setTextColor(ContextCompat.getColor(context, R.color.ime_source_local_text))
+                tvSource.setBackgroundResource(R.drawable.bg_ime_pill_local)
             }
 
             // Relative or absolute timestamp
             tvTime.text = formatTimestamp(clip.ts)
 
-            // Pin state
+            // Pin state (gold when pinned)
             if (clip.pinned) {
                 btnPin.setImageResource(R.drawable.ic_ime_pin_filled)
-                btnPin.setColorFilter(Color.parseColor("#00E5FF"))
+                btnPin.setColorFilter(ContextCompat.getColor(context, R.color.ime_pin_gold))
                 btnPin.contentDescription = context.getString(R.string.ime_pinned)
             } else {
                 btnPin.setImageResource(R.drawable.ic_ime_pin)

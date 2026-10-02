@@ -178,7 +178,7 @@ class ClipSyncService : Service() {
                 evaluateClipboardMonitoring()
                 val injectedText = intent.getStringExtra(EXTRA_TEXT) ?: ""
                 serviceScope.launch(Dispatchers.IO) {
-                    clipboardCaptureManager.captureLocalClip(injectedText)
+                    clipboardCaptureManager.captureLocalClip(injectedText, isExplicit = true)
                 }
             }
             ACTION_SYNC_NOW -> {
@@ -186,9 +186,13 @@ class ClipSyncService : Service() {
                 serviceScope.launch(Dispatchers.IO) {
                     val selection = SelectionCache.getFreshSelection()
                     if (!selection.isNullOrBlank()) {
-                        clipboardCaptureManager.captureLocalClip(selection)
+                        clipboardCaptureManager.captureLocalClip(selection, isExplicit = true)
                     } else {
-                        clipboardCaptureManager.handlePrimaryClipChanged()
+                        val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                        val text = cm?.primaryClip?.getItemAt(0)?.coerceToText(this@ClipSyncService)?.toString() ?: ""
+                        if (text.isNotBlank()) {
+                            clipboardCaptureManager.captureLocalClip(text, isExplicit = true)
+                        }
                     }
                 }
             }
@@ -569,19 +573,44 @@ class ClipSyncService : Service() {
             )
         )
 
-        // 7. If not a conflict loser, apply to local clipboard with suppression
+        // 7. If not a conflict loser, apply to local clipboard with suppression only when autoSync is ON
         if (!isLoser) {
-            clipboardCaptureManager.applyRemoteClip(remoteClip.text)
+            if (syncPreferences.autoSync) {
+                clipboardCaptureManager.applyRemoteClip(remoteClip.text)
+                lastAppliedRemoteText = remoteClip.text
+            }
         }
     }
 
+    @Volatile
+    private var lastAppliedRemoteText: String? = null
+
     private fun cleanSocket() {
+        val hadActiveConnection = activeSocket != null
         try { outputStream?.close() } catch (_: Exception) {}
         try { activeSocket?.close() } catch (_: Exception) {}
         try { connectingSocket?.close() } catch (_: Exception) {}
         outputStream = null
         activeSocket = null
         connectingSocket = null
+        if (hadActiveConnection) {
+            handleDisconnectClipboardClear()
+        }
+    }
+
+    private fun handleDisconnectClipboardClear() {
+        if (!syncPreferences.clearOnDisconnect) return
+        val lastRemote = lastAppliedRemoteText ?: return
+        serviceScope.launch(Dispatchers.Main) {
+            try {
+                val cm = getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager ?: return@launch
+                val currentText = cm.primaryClip?.getItemAt(0)?.coerceToText(this@ClipSyncService)?.toString()
+                if (currentText == lastRemote) {
+                    clipboardCaptureManager.copyToClipboardWithoutBroadcast("")
+                    lastAppliedRemoteText = null
+                }
+            } catch (_: Exception) {}
+        }
     }
 
     private fun updateState(newState: SyncConnectionState) {
