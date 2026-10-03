@@ -43,6 +43,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.github.premtechworks.synqvia.ui.theme.SynqviaTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.drawWithContent
@@ -115,7 +116,7 @@ fun isSystemReduceMotionEnabled(context: Context): Boolean {
 fun Modifier.pressable(
     targetScale: Float = 0.97f,
     showOverlay: Boolean = false,
-    overlayColor: Color = Color.White.copy(alpha = 0.08f),
+    overlayColor: Color? = null,
     enabled: Boolean = true,
     interactionSource: MutableInteractionSource? = null,
     onClick: (() -> Unit)? = null
@@ -123,6 +124,8 @@ fun Modifier.pressable(
     val reduceMotion = LocalReduceMotion.current
     val internalSource = interactionSource ?: remember { MutableInteractionSource() }
     val isPressed by internalSource.collectIsPressedAsState()
+    val isDark = SynqviaTheme.isDark
+    val effectiveOverlayColor = overlayColor ?: if (isDark) Color(0x14FFFFFF) else Color(0x0F0B1B33)
 
     val scale by animateFloatAsState(
         targetValue = if (!reduceMotion && enabled && isPressed) targetScale else 1f,
@@ -169,7 +172,7 @@ fun Modifier.pressable(
         .drawWithContent {
             drawContent()
             if (overlayAlpha > 0f) {
-                drawRect(color = overlayColor.copy(alpha = overlayColor.alpha * overlayAlpha))
+                drawRect(color = effectiveOverlayColor.copy(alpha = effectiveOverlayColor.alpha * overlayAlpha))
             }
         }
 }
@@ -342,12 +345,24 @@ fun RollingNumber(
 }
 
 /**
- * Shimmering placeholder cards: surface with a moving 8%-white highlight, 1.2s loop.
+ * Shimmering placeholder cards: surface with a moving highlight, 1.2s loop.
+ * Dark: 8% white sweep; Light: white @ 60% sweep on #EAF0FA.
  * Disabled when LocalReduceMotion is enabled.
  */
-fun Modifier.shimmerHighlight(): Modifier = composed {
+fun Modifier.shimmerHighlight(
+    baseColor: Color? = null,
+    sweepColor: Color? = null
+): Modifier = composed {
     val reduceMotion = LocalReduceMotion.current
-    if (reduceMotion) return@composed this
+    val isDark = SynqviaTheme.isDark
+    val effectiveBaseColor = baseColor ?: if (isDark) Color.Transparent else Color(0xFFEAF0FA)
+    val effectiveSweepColor = sweepColor ?: if (isDark) Color(0x14FFFFFF) else Color(0x99FFFFFF)
+
+    if (reduceMotion) {
+        return@composed if (effectiveBaseColor != Color.Transparent) {
+            this.background(effectiveBaseColor)
+        } else this
+    }
 
     val transition = rememberInfiniteTransition(label = "shimmerTransition")
     val translateAnim by transition.animateFloat(
@@ -361,6 +376,9 @@ fun Modifier.shimmerHighlight(): Modifier = composed {
     )
 
     drawWithContent {
+        if (effectiveBaseColor != Color.Transparent) {
+            drawRect(color = effectiveBaseColor)
+        }
         drawContent()
         val width = size.width
         val height = size.height
@@ -369,7 +387,7 @@ fun Modifier.shimmerHighlight(): Modifier = composed {
             val brush = Brush.linearGradient(
                 colors = listOf(
                     Color.Transparent,
-                    Color.White.copy(alpha = 0.08f),
+                    effectiveSweepColor,
                     Color.Transparent
                 ),
                 start = Offset(startX - width * 0.5f, 0f),

@@ -15,6 +15,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -41,7 +42,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Laptop
 import androidx.compose.material.icons.filled.Search
 import com.github.premtechworks.synqvia.ui.components.ScreenScaffold
@@ -60,8 +63,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.ui.graphics.graphicsLayer
 import com.github.premtechworks.synqvia.ui.motion.LocalReduceMotion
 import com.github.premtechworks.synqvia.ui.motion.StandardEasing
-import com.github.premtechworks.synqvia.ui.theme.AccentGreen
-import com.github.premtechworks.synqvia.ui.theme.OnPrimaryCyan
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -96,15 +97,8 @@ import com.github.premtechworks.synqvia.ui.components.SmallCyanButton
 import com.github.premtechworks.synqvia.ui.components.SynqviaCard
 import com.github.premtechworks.synqvia.ui.components.SynqviaScreen
 import com.github.premtechworks.synqvia.ui.components.SynqviaTopBar
-import com.github.premtechworks.synqvia.ui.theme.OutlineDark
-import com.github.premtechworks.synqvia.ui.theme.PrimaryCyan
-import com.github.premtechworks.synqvia.ui.theme.SurfaceDark
-import com.github.premtechworks.synqvia.ui.theme.SurfaceInset
 import com.github.premtechworks.synqvia.ui.theme.SynqviaTheme
 import com.github.premtechworks.synqvia.ui.theme.SynqviaType
-import com.github.premtechworks.synqvia.ui.theme.TextPrimary
-import com.github.premtechworks.synqvia.ui.theme.TextSecondary
-import com.github.premtechworks.synqvia.ui.theme.TextTertiary
 import com.github.premtechworks.synqvia.ui.CardGlassStyle
 import com.github.premtechworks.synqvia.ui.GlassCardBorderBrush
 import com.github.premtechworks.synqvia.ui.motion.LocalAppHaptics
@@ -277,6 +271,7 @@ fun PairScreenContent(
     ScreenScaffold(
         modifier = modifier.graphicsLayer { alpha = screenAlpha },
         header = {
+            val colors = SynqviaTheme.colors
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -286,25 +281,28 @@ fun PairScreenContent(
                     onClick = onBack,
                     size = 40.dp,
                     iconSize = 20.dp,
+                    tint = if (colors.isDark) colors.textPrimary else Color(0xFF2B3A55),
                     contentDescription = "Navigate back"
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = "Pair with your Linux PC",
                     style = SynqviaType.Headline,
-                    color = TextPrimary,
+                    color = colors.textPrimary,
                     modifier = Modifier.weight(1f)
                 )
                 CircleIconButton(
-                    icon = Icons.Default.HelpOutline,
+                    icon = Icons.AutoMirrored.Filled.HelpOutline,
                     onClick = { showHelpDialog = true },
                     size = 40.dp,
                     iconSize = 20.dp,
+                    tint = if (colors.isDark) colors.textPrimary else Color(0xFF2B3A55),
                     contentDescription = "Help - How to pair"
                 )
             }
         }
     ) { contentPadding ->
+        val colors = SynqviaTheme.colors
         ScrollableColumn(
             contentPadding = contentPadding,
             modifier = Modifier
@@ -318,7 +316,7 @@ fun PairScreenContent(
             Text(
                 text = "Make sure Synqvia is running on your Linux PC and Bluetooth is enabled.",
                 style = SynqviaType.Footnote,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 24.dp)
             )
@@ -326,15 +324,15 @@ fun PairScreenContent(
             Spacer(modifier = Modifier.height(24.dp))
 
             // DEVICE CARD OR EMPTY STATE
+            val currentTarget = selectedDevice
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
             ) {
-                val currentTarget = selectedDevice
                 if (currentTarget != null && currentTarget.mac.isNotBlank()) {
                     val borderFlashColor by animateColorAsState(
-                        targetValue = if (isSuccess) AccentGreen else OutlineDark,
+                        targetValue = if (isSuccess) (if (colors.isDark) Color(0xFF22C55E) else colors.green) else colors.outline,
                         animationSpec = tween(400),
                         label = "pair_border_flash"
                     )
@@ -362,19 +360,19 @@ fun PairScreenContent(
                             modifier = Modifier.fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // 56dp rounded-12 tile with cyan laptop icon
+                            // 56dp rounded-12 tile with laptop icon
                             Box(
                                 modifier = Modifier
                                     .size(56.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(SurfaceInset)
-                                    .border(1.dp, OutlineDark, RoundedCornerShape(12.dp)),
+                                    .background(colors.surfaceInset)
+                                    .border(1.dp, colors.outline, RoundedCornerShape(12.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Laptop,
                                     contentDescription = null,
-                                    tint = PrimaryCyan,
+                                    tint = if (colors.isDark) colors.primary else Color(0xFF2B3A55),
                                     modifier = Modifier.size(28.dp)
                                 )
                             }
@@ -386,13 +384,13 @@ fun PairScreenContent(
                                 Text(
                                     text = currentTarget.name,
                                     style = SynqviaType.Headline,
-                                    color = TextPrimary
+                                    color = colors.textPrimary
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
                                     text = currentTarget.mac,
                                     style = SynqviaType.Mono.copy(letterSpacing = 0.sp),
-                                    color = TextSecondary
+                                    color = colors.textSecondary
                                 )
                             }
 
@@ -433,8 +431,8 @@ fun PairScreenContent(
                                 },
                                 shape = RoundedCornerShape(btnCorner),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = PrimaryCyan,
-                                    contentColor = OnPrimaryCyan
+                                    containerColor = colors.primary,
+                                    contentColor = colors.onPrimary
                                 ),
                                 modifier = Modifier
                                     .width(if (isConnecting) btnWidth else 340.dp)
@@ -456,7 +454,7 @@ fun PairScreenContent(
                                         "connecting" -> {
                                             CircularProgressIndicator(
                                                 modifier = Modifier.size(20.dp),
-                                                color = OnPrimaryCyan,
+                                                color = colors.onPrimary,
                                                 strokeWidth = 2.dp
                                             )
                                         }
@@ -468,20 +466,20 @@ fun PairScreenContent(
                                                 Icon(
                                                     imageVector = Icons.Default.Check,
                                                     contentDescription = null,
-                                                    tint = OnPrimaryCyan,
+                                                    tint = colors.onPrimary,
                                                     modifier = Modifier.size(20.dp)
                                                 )
                                                 Spacer(modifier = Modifier.width(6.dp))
                                                 Text(
                                                     text = "Connected",
-                                                    style = SynqviaType.Button.copy(color = OnPrimaryCyan)
+                                                    style = SynqviaType.Button.copy(color = colors.onPrimary)
                                                 )
                                             }
                                         }
                                         else -> {
                                             Text(
                                                 text = "Pair & Connect",
-                                                style = SynqviaType.Button.copy(color = OnPrimaryCyan)
+                                                style = SynqviaType.Button.copy(color = colors.onPrimary)
                                             )
                                         }
                                     }
@@ -502,7 +500,7 @@ fun PairScreenContent(
                         ) {
                             IconTile(
                                 icon = Icons.Default.Bluetooth,
-                                tint = PrimaryCyan,
+                                tint = colors.primary,
                                 size = 48.dp,
                                 iconSize = 24.dp
                             )
@@ -510,13 +508,13 @@ fun PairScreenContent(
                             Text(
                                 text = "No paired devices found",
                                 style = SynqviaType.Headline,
-                                color = TextPrimary
+                                color = colors.textPrimary
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = "Make sure your PC is paired in Android Bluetooth settings first.",
                                 style = SynqviaType.Footnote,
-                                color = TextSecondary,
+                                color = colors.textSecondary,
                                 textAlign = TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(16.dp))
@@ -533,7 +531,18 @@ fun PairScreenContent(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            if (currentTarget != null && currentTarget.mac.isNotBlank()) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "or",
+                    style = SynqviaType.Caption,
+                    color = colors.textTertiary,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+            } else {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             // Below device card: OutlinedCyanButton "Select Different Device" (height 48dp)
             Box(
@@ -552,7 +561,9 @@ fun PairScreenContent(
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("select_different_device_btn"),
-                    height = 48.dp
+                    height = 48.dp,
+                    borderColor = if (colors.isDark) colors.primary else Color(0xFFB8D0F5),
+                    contentColor = if (colors.isDark) colors.primary else Color(0xFF2A4673)
                 )
             }
 
@@ -574,11 +585,12 @@ fun PairScreenContent(
         val isBlurSupported = LocalIsBlurSupported.current
 
         if (showBottomSheet) {
+            val colors = SynqviaTheme.colors
             ModalBottomSheet(
                 onDismissRequest = { showBottomSheet = false },
                 sheetState = bottomSheetState,
                 containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                contentColor = TextPrimary,
+                contentColor = colors.textPrimary,
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                 dragHandle = null
             ) {
@@ -590,7 +602,7 @@ fun PairScreenContent(
                             hazeState = hazeState,
                             style = CardGlassStyle,
                             isBlurSupported = isBlurSupported,
-                            fallbackColor = SurfaceDark,
+                            fallbackColor = if (colors.isDark) Color(0xFF0D1420) else colors.surface,
                             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                         )
                         .border(1.dp, GlassCardBorderBrush, RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
@@ -604,13 +616,13 @@ fun PairScreenContent(
                         Text(
                             text = "Paired Bluetooth Devices",
                             style = SynqviaType.Headline,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "Select your Linux machine running Synqvia.",
                             style = SynqviaType.Caption,
-                            color = TextSecondary
+                            color = colors.textSecondary
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -625,7 +637,7 @@ fun PairScreenContent(
                                 Text(
                                     text = "No Bluetooth devices found paired with this phone.",
                                     style = SynqviaType.Body,
-                                    color = TextSecondary,
+                                    color = colors.textSecondary,
                                     textAlign = TextAlign.Center
                                 )
                             }
@@ -638,16 +650,19 @@ fun PairScreenContent(
                             ) {
                                 items(pairedDevices) { device ->
                                     val isSelected = selectedDevice?.mac.equals(device.mac, ignoreCase = true)
+                                    val rowBg = if (colors.isDark) {
+                                        if (isSelected) colors.surfaceInset else Color(0xFF0D1420)
+                                    } else {
+                                        if (isSelected) colors.primaryContainer else colors.surface
+                                    }
+                                    val rowBorder = if (isSelected) colors.primary.copy(alpha = 0.5f) else colors.outline
+                                    val itemIconTint = if (isSelected) colors.primary else colors.textSecondary
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .clip(RoundedCornerShape(12.dp))
-                                            .background(if (isSelected) SurfaceInset else SurfaceDark)
-                                            .border(
-                                                1.dp,
-                                                if (isSelected) PrimaryCyan.copy(alpha = 0.5f) else OutlineDark,
-                                                RoundedCornerShape(12.dp)
-                                            )
+                                            .background(rowBg)
+                                            .border(1.dp, rowBorder, RoundedCornerShape(12.dp))
                                             .pressable(
                                                 targetScale = 0.98f,
                                                 showOverlay = true,
@@ -663,7 +678,7 @@ fun PairScreenContent(
                                         Icon(
                                             imageVector = Icons.Default.Laptop,
                                             contentDescription = null,
-                                            tint = if (isSelected) PrimaryCyan else TextSecondary,
+                                            tint = itemIconTint,
                                             modifier = Modifier.size(24.dp)
                                         )
                                         Spacer(modifier = Modifier.width(12.dp))
@@ -671,12 +686,12 @@ fun PairScreenContent(
                                             Text(
                                                 text = device.name,
                                                 style = SynqviaType.Body,
-                                                color = TextPrimary
+                                                color = colors.textPrimary
                                             )
                                             Text(
                                                 text = device.mac,
                                                 style = SynqviaType.MonoSmall.copy(letterSpacing = 0.sp),
-                                                color = TextSecondary
+                                                color = colors.textSecondary
                                             )
                                         }
                                         RadioButton(
@@ -686,8 +701,8 @@ fun PairScreenContent(
                                                 showBottomSheet = false
                                             },
                                             colors = RadioButtonDefaults.colors(
-                                                selectedColor = PrimaryCyan,
-                                                unselectedColor = TextTertiary
+                                                selectedColor = colors.primary,
+                                                unselectedColor = colors.textTertiary
                                             )
                                         )
                                     }
@@ -704,7 +719,9 @@ fun PairScreenContent(
                                 showManualMacDialog = true
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            height = 44.dp
+                            height = 44.dp,
+                            borderColor = if (colors.isDark) colors.primary else Color(0xFFB8D0F5),
+                            contentColor = if (colors.isDark) colors.primary else Color(0xFF2A4673)
                         )
                     }
                 }
@@ -728,14 +745,15 @@ fun PairScreenContent(
 
         // Help "?" Dialog
         if (showHelpDialog) {
+            val colors = SynqviaTheme.colors
             AlertDialog(
                 onDismissRequest = { showHelpDialog = false },
-                containerColor = SurfaceDark,
+                containerColor = colors.surface,
                 title = {
                     Text(
                         text = "Pairing with Linux",
                         style = SynqviaType.Headline,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
                 },
                 text = {
@@ -743,32 +761,32 @@ fun PairScreenContent(
                         Text(
                             text = "To enable RFCOMM syncing on your Linux PC:",
                             style = SynqviaType.Body,
-                            color = TextSecondary
+                            color = colors.textSecondary
                         )
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(SurfaceInset)
-                                .border(1.dp, OutlineDark, RoundedCornerShape(8.dp))
+                                .background(colors.surfaceInset)
+                                .border(1.dp, colors.outline, RoundedCornerShape(8.dp))
                                 .padding(10.dp)
                         ) {
                             Text(
                                 text = "$ synqvia-daemon\n# Or verify with bluetoothctl:\n$ bluetoothctl show",
                                 style = SynqviaType.MonoSmall,
-                                color = PrimaryCyan
+                                color = colors.primary
                             )
                         }
                         Text(
                             text = "Ensure your phone is paired in your Linux Bluetooth settings first.",
                             style = SynqviaType.Caption,
-                            color = TextTertiary
+                            color = colors.textTertiary
                         )
                     }
                 },
                 confirmButton = {
                     TextButton(onClick = { showHelpDialog = false }) {
-                        Text("Got it", color = PrimaryCyan)
+                        Text("Got it", color = colors.primary)
                     }
                 }
             )
@@ -787,6 +805,7 @@ private fun BeforeYouConnectCard(
     isPaired: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val colors = SynqviaTheme.colors
     SynqviaCard(
         modifier = modifier
             .fillMaxWidth()
@@ -799,16 +818,16 @@ private fun BeforeYouConnectCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.HelpOutline,
+                    imageVector = Icons.AutoMirrored.Filled.HelpOutline,
                     contentDescription = null,
-                    tint = PrimaryCyan,
+                    tint = colors.primary,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Before you connect",
                     style = SynqviaType.Headline,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
             }
 
@@ -849,13 +868,17 @@ private fun BeforeConnectStepRow(
     subtitle: String,
     isSatisfied: Boolean
 ) {
+    val colors = SynqviaTheme.colors
+    val activeGreen = if (colors.isDark) Color(0xFF22C55E) else colors.green
+    val activeGreenText = if (colors.isDark) Color(0xFF22C55E) else colors.greenText
+
     val circleBg by animateColorAsState(
-        targetValue = if (isSatisfied) AccentGreen.copy(alpha = 0.15f) else SurfaceInset,
+        targetValue = if (isSatisfied) activeGreen.copy(alpha = 0.15f) else colors.surfaceInset,
         animationSpec = tween(300),
         label = "pair_step_bg_$stepNumber"
     )
     val circleBorder by animateColorAsState(
-        targetValue = if (isSatisfied) AccentGreen else OutlineDark,
+        targetValue = if (isSatisfied) activeGreen else colors.outline,
         animationSpec = tween(300),
         label = "pair_step_border_$stepNumber"
     )
@@ -881,14 +904,14 @@ private fun BeforeConnectStepRow(
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "Step $stepNumber completed",
-                        tint = AccentGreen,
+                        tint = activeGreen,
                         modifier = Modifier.size(16.dp)
                     )
                 } else {
                     Text(
                         text = "$stepNumber",
                         style = SynqviaType.FootnoteSemiBold,
-                        color = TextTertiary
+                        color = colors.textTertiary
                     )
                 }
             }
@@ -900,13 +923,13 @@ private fun BeforeConnectStepRow(
             Text(
                 text = title,
                 style = SynqviaType.SubheadlineSemiBold,
-                color = if (isSatisfied) TextPrimary else TextSecondary
+                color = if (isSatisfied) colors.textPrimary else colors.textSecondary
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = subtitle,
                 style = SynqviaType.Caption,
-                color = if (isSatisfied) AccentGreen.copy(alpha = 0.85f) else TextTertiary
+                color = if (isSatisfied) activeGreenText.copy(alpha = 0.85f) else colors.textTertiary
             )
         }
     }

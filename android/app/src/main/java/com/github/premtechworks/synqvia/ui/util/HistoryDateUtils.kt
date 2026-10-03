@@ -94,3 +94,49 @@ fun groupClipsByDate(
     }
 }
 
+private val headerCache = java.util.concurrent.ConcurrentHashMap<LocalDate, String>()
+
+/**
+ * Builds immutable HistoryGroupUi items off the main thread with cached date header formatting.
+ */
+fun buildHistoryGroups(
+    clips: List<ClipEntity>,
+    now: Long = System.currentTimeMillis(),
+    zoneId: ZoneId = ZoneId.systemDefault()
+): List<com.github.premtechworks.synqvia.ui.screens.HistoryGroupUi> {
+    if (clips.isEmpty()) return emptyList()
+
+    val today = Instant.ofEpochMilli(now).atZone(zoneId).toLocalDate()
+    val yesterday = today.minusDays(1)
+
+    val grouped = linkedMapOf<LocalDate, MutableList<com.github.premtechworks.synqvia.ui.screens.HistoryItemUi>>()
+
+    for (clip in clips) {
+        val date = Instant.ofEpochMilli(clip.ts).atZone(zoneId).toLocalDate()
+        val formattedTime = formatHistoryItemTime(clip.ts, now, zoneId)
+        val urlHost = UrlUtil.extractHost(clip.text)
+        grouped.getOrPut(date) { mutableListOf() }.add(
+            com.github.premtechworks.synqvia.ui.screens.HistoryItemUi(
+                clip = clip,
+                formattedTime = formattedTime,
+                urlHost = urlHost
+            )
+        )
+    }
+
+    return grouped.map { (date, items) ->
+        val header = when (date) {
+            today -> "Today"
+            yesterday -> "Yesterday"
+            else -> headerCache.getOrPut(date) {
+                date.format(DATE_HEADER_FORMATTER)
+            }
+        }
+        com.github.premtechworks.synqvia.ui.screens.HistoryGroupUi(
+            header = header,
+            date = date,
+            items = items
+        )
+    }
+}
+

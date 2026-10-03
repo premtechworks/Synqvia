@@ -4,13 +4,40 @@
         <item name="android:windowBackground">@drawable/bg_app_gradient</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <item name="synqKbBg">#E8EDF5</item>
+        <item name="synqKeyBg">#FFFFFF</item>
+        <item name="synqKeyPressed">#DCE6F5</item>
+        <item name="synqKeyFunction">#D5DEEB</item>
+        <item name="synqKeyText">#0B1B33</item>
+        <item name="synqKeyHint">#7A8AA3</item>
+        <item name="synqEnterBg">#1F6FEB</item>
+        <item name="synqEnterIcon">#FFFFFF</item>
+        <item name="synqToolbarBg">#FFFFFF</item>
+        <item name="synqToolbarIconInactive">#55657F</item>
+        <item name="synqToolbarActiveBg">#E3EEFF</item>
+        <item name="synqToolbarActiveIcon">#1F6FEB</item>
+        <item name="synqDivider">#E1E9F5</item>
+        <item name="synqCardBg">#FFFFFF</item>
+        <item name="synqPanelBg">#F4F7FC</item>
+        <item name="synqOutline">#E1E9F5</item>
+        <item name="synqTextSecondary">#55657F</item>
+        <item name="synqTextTertiary">#62738F</item>
+        <item name="synqPillFromPcBg">#E3F6EC</item>
+        <item name="synqPillFromPcFg">#12804A</item>
+        <item name="synqPillToPcBg">#E4EEFF</item>
+        <item name="synqPillToPcFg">#1F6FEB</item>
+        <item name="synqPinGold">#F5B000</item>
+        <item name="synqKeyShadow">#2E1F2F4D</item>
+        <item name="synqBrandMark">@drawable/brand_mark_tile</item>
+        <item name="synqBrandWordmark">@drawable/brand_wordmark_for_light</item>
     </style>
 
     <style name="Theme.MyApplication" parent="Theme.Synqvia" />
 
     <style name="Theme.Synqvia.Starting" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">#050B18</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_synqvia_logo_mark</item>
+        <item name="windowSplashScreenBackground">#F7FAFE</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon_light</item>
         <item name="postSplashScreenTheme">@style/Theme.Synqvia</item>
     </style>
 
@@ -21,5 +48,64 @@
         <item name="android:windowNoTitle">true</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- IME Theming Styles -->
+    <style name="Theme.Synqvia.Ime.Dark" parent="android:Theme.DeviceDefault.InputMethod">
+        <item name="synqKbBg">#050B18</item>
+        <item name="synqKeyBg">#15233B</item>
+        <item name="synqKeyPressed">#1E3254</item>
+        <item name="synqKeyFunction">#101B2F</item>
+        <item name="synqKeyText">#FFFFFF</item>
+        <item name="synqKeyHint">#5F7191</item>
+        <item name="synqEnterBg">#12D4FF</item>
+        <item name="synqEnterIcon">#04111F</item>
+        <item name="synqToolbarBg">#081020</item>
+        <item name="synqToolbarIconInactive">#8FA0BC</item>
+        <item name="synqToolbarActiveBg">#2412D4FF</item>
+        <item name="synqToolbarActiveIcon">#12D4FF</item>
+        <item name="synqDivider">#0FFFFFFF</item>
+        <item name="synqCardBg">#101B2F</item>
+        <item name="synqPanelBg">#0B1426</item>
+        <item name="synqOutline">#1F2D47</item>
+        <item name="synqTextSecondary">#8FA0BC</item>
+        <item name="synqTextTertiary">#7A8CAB</item>
+        <item name="synqPillFromPcBg">#242BD97E</item>
+        <item name="synqPillFromPcFg">#2BD97E</item>
+        <item name="synqPillToPcBg">#243D8BFF</item>
+        <item name="synqPillToPcFg">#3D8BFF</item>
+        <item name="synqPinGold">#FFC21A</item>
+        <item name="synqKeyShadow">#00000000</item>
+        <item name="synqBrandMark">@drawable/brand_mark_neon</item>
+        <item name="synqBrandWordmark">@drawable/brand_wordmark_for_dark</item>
+    </style>
+
+    <style name="Theme.Synqvia.Ime.Light" parent="android:Theme.DeviceDefault.InputMethod">
+        <item name="synqKbBg">#E8EDF5</item>
+        <item name="synqKeyBg">#FFFFFF</item>
+        <item name="synqKeyPressed">#DCE6F5</item>
+        <item name="synqKeyFunction">#D5DEEB</item>
+        <item name="synqKeyText">#0B1B33</item>
+        <item name="synqKeyHint">#7A8AA3</item>
+        <item name="synqEnterBg">#1F6FEB</item>
+        <item name="synqEnterIcon">#FFFFFF</item>
+        <item name="synqToolbarBg">#FFFFFF</item>
+        <item name="synqToolbarIconInactive">#55657F</item>
+        <item name="synqToolbarActiveBg">#E3EEFF</item>
+        <item name="synqToolbarActiveIcon">#1F6FEB</item>
+        <item name="synqDivider">#E1E9F5</item>
+        <item name="synqCardBg">#FFFFFF</item>
+        <item name="synqPanelBg">#F4F7FC</item>
+        <item name="synqOutline">#E1E9F5</item>
+        <item name="synqTextSecondary">#55657F</item>
+        <item name="synqTextTertiary">#62738F</item>
+        <item name="synqPillFromPcBg">#E3F6EC</item>
+        <item name="synqPillFromPcFg">#12804A</item>
+        <item name="synqPillToPcBg">#E4EEFF</item>
+        <item name="synqPillToPcFg">#1F6FEB</item>
+        <item name="synqPinGold">#F5B000</item>
+        <item name="synqKeyShadow">#2E1F2F4D</item>
+        <item name="synqBrandMark">@drawable/brand_mark_tile</item>
+        <item name="synqBrandWordmark">@drawable/brand_wordmark_for_light</item>
     </style>
 </resources>

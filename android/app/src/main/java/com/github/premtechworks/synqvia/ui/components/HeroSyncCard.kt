@@ -24,7 +24,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.github.premtechworks.synqvia.ui.theme.synqviaCardShadow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
@@ -112,6 +114,8 @@ fun HeroSyncCard(
         formatLastSyncedText(lastSyncTimestamp)
     }
 
+    val colors = SynqviaTheme.colors
+    val isDark = SynqviaTheme.isDark
     val haptics = LocalAppHaptics.current
     val coroutineScope = rememberCoroutineScope()
     val reduceMotion = LocalReduceMotion.current
@@ -166,9 +170,11 @@ fun HeroSyncCard(
             .testTag("hero_sync_card")
             .semantics { contentDescription = "Sync connection status: $statusTitle, $statusSubtitle" },
         shape = RoundedCornerShape(20.dp),
+        backgroundColor = colors.connectionCardBg,
+        borderColor = colors.connectionCardBorder,
         padding = 16.dp
     ) {
-        // Row 1: StatusDot (12dp) + Title/Subtitle Crossfade Column + 20dp ChevronRight
+        // Row 1: StatusDot (12dp) + Title/Subtitle Crossfade Column + 20dp ChevronRight / 28dp Circle (Light)
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -187,12 +193,12 @@ fun HeroSyncCard(
                     Text(
                         text = title,
                         style = SynqviaType.Headline,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
                     Text(
                         text = subtitle,
                         style = SynqviaType.Caption,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
             }
@@ -206,36 +212,73 @@ fun HeroSyncCard(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "Pair settings",
-                    tint = TextSecondary,
-                    modifier = Modifier.size(20.dp)
-                )
+                if (isDark) {
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = "Pair settings",
+                        tint = colors.textSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(colors.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = "Pair settings",
+                            tint = colors.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Inset Panel (surfaceInset, 14dp radius, 12dp padding)
-        Column(
-            modifier = Modifier
+        // Inset Panel (white surface with soft shadow in light, SurfaceInset in dark)
+        val innerPanelModifier = if (isDark) {
+            Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
                 .background(SurfaceInset)
                 .border(1.dp, OutlineDark, RoundedCornerShape(14.dp))
                 .padding(12.dp)
-        ) {
+        } else {
+            Modifier
+                .fillMaxWidth()
+                .synqviaCardShadow(elevation = 2.dp, shape = RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(14.dp))
+                .background(colors.surface)
+                .border(1.dp, colors.outline, RoundedCornerShape(14.dp))
+                .padding(12.dp)
+        }
+
+        Column(modifier = innerPanelModifier) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconTile(
-                    icon = Icons.Default.Laptop,
-                    tint = PrimaryCyan,
-                    size = 40.dp,
-                    iconSize = 20.dp
-                )
+                if (isDark) {
+                    IconTile(
+                        icon = Icons.Default.Laptop,
+                        tint = PrimaryCyan,
+                        size = 40.dp,
+                        iconSize = 20.dp
+                    )
+                } else {
+                    IconTile(
+                        icon = Icons.Default.Laptop,
+                        contentColor = Color(0xFF2B3A55),
+                        containerColor = colors.surfaceInset,
+                        size = 40.dp,
+                        iconSize = 20.dp
+                    )
+                }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -245,28 +288,31 @@ fun HeroSyncCard(
                             "Linux PC"
                         },
                         style = SynqviaType.Headline,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
                     Text(
                         text = if (config.pcMac.isNotBlank()) config.pcMac else "F8:34:41:53:BE:24",
                         style = SynqviaType.MonoSmall,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
-                // CH pill (blue tint, cyan 11sp SemiBold text, 20dp tall)
+                // CH pill (blue tint in dark, primaryContainer in light)
+                val chBg = if (isDark) AccentBlue.copy(alpha = 0.14f) else colors.primaryContainer
+                val chBorder = if (isDark) AccentBlue.copy(alpha = 0.35f) else colors.primaryContainer
+                val chColor = if (isDark) PrimaryCyan else colors.onPrimaryContainer
                 Box(
                     modifier = Modifier
                         .height(20.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(AccentBlue.copy(alpha = 0.14f))
-                        .border(1.dp, AccentBlue.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                        .background(chBg)
+                        .border(1.dp, chBorder, RoundedCornerShape(10.dp))
                         .padding(horizontal = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "CH ${config.channel}",
                         style = SynqviaType.Overline.copy(
-                            color = PrimaryCyan,
+                            color = chColor,
                             fontFeatureSettings = "tnum"
                         )
                     )
@@ -290,14 +336,14 @@ fun HeroSyncCard(
                 Icon(
                     imageVector = Icons.Default.Refresh,
                     contentDescription = "Reconnect",
-                    tint = TextSecondary,
+                    tint = if (isDark) colors.textSecondary else colors.greenText,
                     modifier = Modifier.size(12.dp)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = lastSyncedText,
                     style = SynqviaType.CaptionTnum,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
         }
@@ -341,8 +387,8 @@ fun HeroSyncCard(
                     },
                     shape = RoundedCornerShape(12.dp),
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                        containerColor = PrimaryCyan,
-                        contentColor = com.github.premtechworks.synqvia.ui.theme.OnPrimaryCyan
+                        containerColor = colors.primary,
+                        contentColor = colors.onPrimary
                     ),
                     modifier = Modifier
                         .weight(1f)
@@ -359,7 +405,7 @@ fun HeroSyncCard(
                     Text(
                         text = "Retry",
                         style = SynqviaTypography.ButtonLabel,
-                        color = com.github.premtechworks.synqvia.ui.theme.OnPrimaryCyan
+                        color = colors.onPrimary
                     )
                 }
             } else {
@@ -385,8 +431,8 @@ fun HeroSyncCard(
                     },
                     shape = RoundedCornerShape(12.dp),
                     colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                        containerColor = PrimaryCyan,
-                        contentColor = com.github.premtechworks.synqvia.ui.theme.OnPrimaryCyan
+                        containerColor = colors.primary,
+                        contentColor = colors.onPrimary
                     ),
                     modifier = Modifier
                         .weight(1f)
@@ -409,10 +455,13 @@ fun HeroSyncCard(
                     Text(
                         text = syncLabel,
                         style = SynqviaTypography.ButtonLabel,
-                        color = com.github.premtechworks.synqvia.ui.theme.OnPrimaryCyan
+                        color = colors.onPrimary
                     )
                 }
             }
+
+            val sendBorderColor = if (isDark) PrimaryCyan else Color(0xFFBBD4FA)
+            val sendContentColor = if (isDark) PrimaryCyan else colors.primary
 
             androidx.compose.material3.OutlinedButton(
                 onClick = {
@@ -430,10 +479,10 @@ fun HeroSyncCard(
                     }
                 },
                 shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryCyan),
+                border = androidx.compose.foundation.BorderStroke(1.dp, sendBorderColor),
                 colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
                     containerColor = androidx.compose.ui.graphics.Color.Transparent,
-                    contentColor = PrimaryCyan
+                    contentColor = sendContentColor
                 ),
                 modifier = Modifier
                     .weight(1f)
@@ -444,7 +493,7 @@ fun HeroSyncCard(
                 Icon(
                     imageVector = if (isTestSent) Icons.Default.Check else Icons.AutoMirrored.Filled.Send,
                     contentDescription = null,
-                    tint = PrimaryCyan,
+                    tint = sendContentColor,
                     modifier = Modifier
                         .size(18.dp)
                         .graphicsLayer {
@@ -455,7 +504,7 @@ fun HeroSyncCard(
                 Text(
                     text = if (isTestSent) "Sent to $targetPcName" else "Send Test",
                     style = SynqviaTypography.ButtonLabel,
-                    color = PrimaryCyan,
+                    color = sendContentColor,
                     maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )

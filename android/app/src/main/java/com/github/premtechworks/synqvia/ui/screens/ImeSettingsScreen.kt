@@ -57,11 +57,11 @@ import com.github.premtechworks.synqvia.ui.MainViewModel
 import com.github.premtechworks.synqvia.ui.components.SynqviaCard
 import com.github.premtechworks.synqvia.ui.components.SynqviaScreen
 import com.github.premtechworks.synqvia.ui.components.SynqviaTopBar
-import com.github.premtechworks.synqvia.ui.theme.PrimaryCyan
+import androidx.core.content.ContextCompat
+import com.github.premtechworks.synqvia.ui.components.SynqviaLightDarkPreview
+import com.github.premtechworks.synqvia.ui.components.SynqviaSwitch
 import com.github.premtechworks.synqvia.ui.theme.SynqviaTheme
 import com.github.premtechworks.synqvia.ui.theme.SynqviaType
-import com.github.premtechworks.synqvia.ui.theme.TextPrimary
-import com.github.premtechworks.synqvia.ui.theme.TextSecondary
 
 @Composable
 fun ImeSettingsScreen(
@@ -148,11 +148,12 @@ fun ImeSettingsContent(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
+                    val colors = SynqviaTheme.colors
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "Use Synqvia Keyboard",
                             style = SynqviaType.Headline,
-                            color = TextPrimary
+                            color = colors.textPrimary
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
@@ -162,19 +163,13 @@ fun ImeSettingsContent(
                                 else -> "Tap to enable Synqvia Keyboard in system settings"
                             },
                             style = SynqviaType.Caption,
-                            color = TextSecondary
+                            color = colors.textSecondary
                         )
                     }
 
-                    Switch(
+                    SynqviaSwitch(
                         checked = isDefaultIme,
                         onCheckedChange = { onToggleDefault() },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = androidx.compose.ui.graphics.Color.White,
-                            checkedTrackColor = PrimaryCyan,
-                            uncheckedThumbColor = TextSecondary,
-                            uncheckedTrackColor = androidx.compose.ui.graphics.Color(0xFF1E293B)
-                        ),
                         modifier = Modifier.testTag("switch_use_synqvia_keyboard")
                     )
                 }
@@ -190,17 +185,18 @@ fun ImeSettingsContent(
                     .fillMaxWidth()
                     .testTag("card_ime_preview")
             ) {
+                val colors = SynqviaTheme.colors
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = "Preview",
                         style = SynqviaType.Headline,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "Try typing below to preview the keyboard and clipboard toolbar.",
                         style = SynqviaType.Caption,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
@@ -232,15 +228,15 @@ private fun buildInteractivePreviewView(context: Context): View {
     // Preview EditText (system keyboard suppressed)
     val editText = EditText(context).apply {
         hint = "Try typing here…"
-        setHintTextColor(Color.parseColor("#64748B"))
-        setTextColor(Color.WHITE)
+        setHintTextColor(ContextCompat.getColor(context, R.color.ime_key_hint))
+        setTextColor(ContextCompat.getColor(context, R.color.ime_key_text))
         textSize = 14f
         setPadding(32, 28, 32, 28)
         inputType = InputType.TYPE_CLASS_TEXT
         background = GradientDrawable().apply {
-            setColor(Color.parseColor("#16223A"))
+            setColor(ContextCompat.getColor(context, R.color.ime_key_letter_background))
             cornerRadius = 24f
-            setStroke(2, Color.parseColor("#1F2E47"))
+            setStroke(2, ContextCompat.getColor(context, R.color.ime_card_outline))
         }
         showSoftInputOnFocus = false
         layoutParams = LinearLayout.LayoutParams(
@@ -397,7 +393,7 @@ private fun handlePreviewBackspace(editText: EditText) {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFF050B18)
+@SynqviaLightDarkPreview
 @Composable
 private fun ImeSettingsContentPreview() {
     SynqviaTheme {

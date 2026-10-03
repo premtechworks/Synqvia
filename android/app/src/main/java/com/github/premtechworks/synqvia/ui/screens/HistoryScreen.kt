@@ -29,20 +29,30 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.runtime.key
+import com.github.premtechworks.synqvia.ui.motion.DecelerateEasing
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.saveable.rememberSaveable
+import com.github.premtechworks.synqvia.ui.util.buildHistoryGroups
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,6 +72,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.github.premtechworks.synqvia.data.ClipEntity
@@ -73,20 +84,8 @@ import com.github.premtechworks.synqvia.ui.components.CircleIconButton
 import com.github.premtechworks.synqvia.ui.components.ClipDetailSheet
 import com.github.premtechworks.synqvia.ui.components.ClipHistoryItem
 import com.github.premtechworks.synqvia.ui.components.SynqviaCard
-import com.github.premtechworks.synqvia.ui.theme.AccentRed
-import com.github.premtechworks.synqvia.ui.theme.BgBottom
-import com.github.premtechworks.synqvia.ui.theme.BgTop
-import com.github.premtechworks.synqvia.ui.theme.DividerDark
-import com.github.premtechworks.synqvia.ui.theme.OnPrimaryCyan
-import com.github.premtechworks.synqvia.ui.theme.OutlineDark
-import com.github.premtechworks.synqvia.ui.theme.PrimaryCyan
-import com.github.premtechworks.synqvia.ui.theme.SurfaceDark
-import com.github.premtechworks.synqvia.ui.theme.SurfaceHigh
 import com.github.premtechworks.synqvia.ui.theme.SynqviaTheme
 import com.github.premtechworks.synqvia.ui.theme.SynqviaType
-import com.github.premtechworks.synqvia.ui.theme.TextPrimary
-import com.github.premtechworks.synqvia.ui.theme.TextSecondary
-import com.github.premtechworks.synqvia.ui.theme.TextTertiary
 import com.github.premtechworks.synqvia.ui.util.DateGroup
 import com.github.premtechworks.synqvia.ui.util.groupClipsByDate
 import java.time.LocalDate
@@ -107,11 +106,9 @@ fun HistoryScreen(
     lazyListState: LazyListState = rememberLazyListState(),
     onNavigateTab: (MainTab) -> Unit = { viewModel.setTab(it) }
 ) {
-    val clips by viewModel.filteredClips.collectAsState()
+    val uiState by viewModel.historyUiState.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val currentFilter by viewModel.filter.collectAsState()
-    val stats by viewModel.syncStats.collectAsState()
-    val isLoading by viewModel.isClipsLoading.collectAsState()
     val context = LocalContext.current
     val hazeState = LocalHazeState.current
 
@@ -121,7 +118,7 @@ fun HistoryScreen(
     // Fallback Detail Sheet Dialog for previews / non-haze contexts
     if (hazeState == null) {
         localSelectedClip?.let { detailClip ->
-            val activeClip = clips.find { it.id == detailClip.id } ?: detailClip
+            val activeClip = uiState.rawClips.find { it.id == detailClip.id } ?: detailClip
             ClipDetailSheet(
                 clip = activeClip,
                 onDismiss = { localSelectedClip = null },
@@ -141,20 +138,22 @@ fun HistoryScreen(
 
     // Clear confirmation dialog
     if (showClearConfirmDialog) {
+        val colors = SynqviaTheme.colors
+        val clipCount = if (uiState.totalCount > 0) uiState.totalCount else uiState.rawClips.size
         AlertDialog(
             onDismissRequest = { showClearConfirmDialog = false },
             title = {
                 Text(
-                    text = "Clear Clipboard History?",
+                    text = "Clear all history?",
                     style = SynqviaType.Headline,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
             },
             text = {
                 Text(
-                    text = "All local synced history records will be permanently removed. This does not erase text from PC history.",
+                    text = "This removes $clipCount clips from this phone. Clips on your PC are not affected.",
                     style = SynqviaType.Body,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             },
             confirmButton = {
@@ -164,26 +163,28 @@ fun HistoryScreen(
                         showClearConfirmDialog = false
                     }
                 ) {
-                    Text("Clear All", color = AccentRed, style = SynqviaType.Button.copy(color = AccentRed))
+                    Text("Clear", color = colors.red, style = SynqviaType.Button.copy(color = colors.red))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearConfirmDialog = false }) {
-                    Text("Cancel", color = TextSecondary, style = SynqviaType.Button)
+                    Text("Cancel", color = colors.textSecondary, style = SynqviaType.Button)
                 }
             },
-            containerColor = SurfaceDark,
-            titleContentColor = TextPrimary,
-            textContentColor = TextSecondary
+            containerColor = colors.surface,
+            titleContentColor = colors.textPrimary,
+            textContentColor = colors.textSecondary
         )
     }
 
     HistoryContent(
-        clips = clips,
+        clips = uiState.rawClips,
+        groups = uiState.groups,
         searchQuery = searchQuery,
         currentFilter = currentFilter,
-        totalCount = stats.totalCount,
-        isLoading = isLoading,
+        totalCount = uiState.totalCount,
+        isLoading = uiState.isLoading,
+        isCached = uiState.isCached,
         onRefresh = { viewModel.syncNow() },
         lazyListState = lazyListState,
         onSearchQueryChange = { viewModel.setSearchQuery(it) },
@@ -219,7 +220,9 @@ fun HistoryContent(
     searchQuery: String,
     currentFilter: ClipFilter,
     totalCount: Int,
+    groups: List<HistoryGroupUi> = emptyList(),
     isLoading: Boolean = false,
+    isCached: Boolean = false,
     onRefresh: () -> Unit = {},
     onSearchQueryChange: (String) -> Unit,
     onFilterChange: (ClipFilter) -> Unit,
@@ -237,7 +240,17 @@ fun HistoryContent(
 ) {
     var isSearchActive by remember { mutableStateOf(initialSearchMode || searchQuery.isNotEmpty()) }
     val keyboardController = LocalSoftwareKeyboardController.current
-    val dateGroups = remember(clips) { groupClipsByDate(clips) }
+    val activeGroups = if (groups.isNotEmpty() || clips.isEmpty()) {
+        groups
+    } else {
+        remember(clips) { buildHistoryGroups(clips) }
+    }
+
+    var hasVisitedHistory by rememberSaveable { mutableStateOf(false) }
+    val shouldStagger = !hasVisitedHistory
+    LaunchedEffect(Unit) {
+        hasVisitedHistory = true
+    }
 
     val isScrolled by remember {
         derivedStateOf {
@@ -249,6 +262,7 @@ fun HistoryContent(
     var isRefreshing by remember { mutableStateOf(false) }
     val haptics = LocalAppHaptics.current
     val coroutineScope = rememberCoroutineScope()
+    val colors = SynqviaTheme.colors
 
     ScreenScaffold(
         modifier = modifier.testTag("history_screen"),
@@ -264,7 +278,8 @@ fun HistoryContent(
                     onSearchQueryChange("")
                     keyboardController?.hide()
                 },
-                onBack = onBack
+                onBack = onBack,
+                onClearAll = onRequestClearHistory
             )
         }
     ) { contentPadding ->
@@ -287,25 +302,20 @@ fun HistoryContent(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = contentPadding.calculateTopPadding()),
-                    containerColor = SurfaceHigh,
-                    color = PrimaryCyan
+                    containerColor = colors.surfaceHigh,
+                    color = colors.primary
                 )
             },
             modifier = Modifier.fillMaxSize()
         ) {
-            Crossfade(
-                targetState = isLoading,
-                animationSpec = tween(200),
-                label = "history_loading_crossfade"
-            ) { loading ->
-                if (loading) {
-                    HistorySkeletonList(contentPadding = contentPadding)
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        state = lazyListState,
-                        contentPadding = contentPadding
-                    ) {
+            if (isLoading && !isCached) {
+                HistorySkeletonList(contentPadding = contentPadding)
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = lazyListState,
+                    contentPadding = contentPadding
+                ) {
             // ==========================================
             // A) FILTER CHIPS ROW
             // ==========================================
@@ -370,63 +380,95 @@ fun HistoryContent(
                             Icon(
                                 imageVector = Icons.Default.History,
                                 contentDescription = null,
-                                tint = TextTertiary,
+                                tint = colors.textTertiary,
                                 modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
                                 text = if (searchQuery.isNotEmpty()) "No clips match your search" else "No clips yet",
                                 style = SynqviaType.Headline,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
                         }
                     }
                 }
             } else {
-                dateGroups.forEachIndexed { groupIndex, group ->
-                    stickyHeader(key = "header_${group.header}_${group.date}") {
+                activeGroups.forEachIndexed { groupIndex, group ->
+                    stickyHeader(key = "header_${group.header}_${group.date}", contentType = "date_header") {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(BgTop)
+                                .background(colors.bgTop)
                                 .padding(vertical = 8.dp)
                         ) {
                             Text(
                                 text = group.header,
                                 style = SynqviaType.FootnoteSemiBold,
-                                color = TextSecondary
+                                color = colors.dateHeaderText
                             )
                         }
                     }
 
-                    item(key = "card_${group.header}_${group.date}") {
+                    item(key = "card_${group.header}_${group.date}", contentType = "date_card") {
                         SynqviaCard(
                             shape = RoundedCornerShape(16.dp),
                             padding = 0.dp,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .entryStagger(index = groupIndex + 1)
+                                .entryStagger(index = groupIndex + 1, trigger = shouldStagger && groupIndex < 5)
                                 .animateItem()
                         ) {
-                            group.clips.forEachIndexed { index, clip ->
-                                if (index > 0) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(1.dp)
-                                            .background(DividerDark)
-                                    )
+                            group.items.forEachIndexed { index, item ->
+                                key(item.clip.id) {
+                                    var isDismissed by remember(item.clip.id) { mutableStateOf(false) }
+
+                                    AnimatedVisibility(
+                                        visible = !isDismissed,
+                                        enter = expandVertically(animationSpec = tween(durationMillis = 220, easing = DecelerateEasing)),
+                                        exit = shrinkVertically(
+                                            animationSpec = tween(durationMillis = 220, easing = DecelerateEasing)
+                                        ) + fadeOut(animationSpec = tween(durationMillis = 150))
+                                    ) {
+                                        Column(modifier = Modifier.fillMaxWidth()) {
+                                            if (index > 0) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(1.dp)
+                                                        .background(colors.divider)
+                                                )
+                                            }
+                                            ClipHistoryItem(
+                                                clip = item.clip,
+                                                searchQuery = searchQuery,
+                                                precomputedTime = item.formattedTime,
+                                                precomputedHost = item.urlHost,
+                                                onClick = { onClipClick(item.clip) },
+                                                onTogglePin = {
+                                                    if (currentFilter == ClipFilter.PINNED) {
+                                                        isDismissed = true
+                                                        coroutineScope.launch {
+                                                            delay(220L)
+                                                            onTogglePin(item.clip)
+                                                        }
+                                                    } else {
+                                                        onTogglePin(item.clip)
+                                                    }
+                                                },
+                                                onCopy = { onCopy(item.clip) },
+                                                onShare = { onShare(item.clip) },
+                                                onResend = { onResend(item.clip) },
+                                                onDelete = {
+                                                    isDismissed = true
+                                                    coroutineScope.launch {
+                                                        delay(220L)
+                                                        onDelete(item.clip)
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
                                 }
-                                ClipHistoryItem(
-                                    clip = clip,
-                                    searchQuery = searchQuery,
-                                    onClick = { onClipClick(clip) },
-                                    onTogglePin = { onTogglePin(clip) },
-                                    onCopy = { onCopy(clip) },
-                                    onShare = { onShare(clip) },
-                                    onResend = { onResend(clip) },
-                                    onDelete = { onDelete(clip) }
-                                )
                             }
                         }
                     }
@@ -442,7 +484,7 @@ fun HistoryContent(
                     ) {
                         Text(
                             text = "Clear all history",
-                            style = SynqviaType.ButtonSmall.copy(color = AccentRed),
+                            style = SynqviaType.ButtonSmall.copy(color = colors.redText),
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable(
@@ -459,11 +501,11 @@ fun HistoryContent(
 }
 }
 }
-}
 
 
 @Composable
 private fun HistorySkeletonList(contentPadding: PaddingValues) {
+    val colors = SynqviaTheme.colors
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -477,7 +519,7 @@ private fun HistorySkeletonList(contentPadding: PaddingValues) {
                 .padding(top = 16.dp, bottom = 4.dp)
                 .size(width = 80.dp, height = 14.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(SurfaceHigh)
+                .background(colors.surfaceHigh)
                 .shimmerHighlight()
         )
 
@@ -500,13 +542,13 @@ private fun HistorySkeletonList(contentPadding: PaddingValues) {
                             modifier = Modifier
                                 .size(width = 64.dp, height = 18.dp)
                                 .clip(RoundedCornerShape(9.dp))
-                                .background(SurfaceHigh)
+                                .background(colors.surfaceHigh)
                         )
                         Box(
                             modifier = Modifier
                                 .size(width = 48.dp, height = 14.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(SurfaceHigh)
+                                .background(colors.surfaceHigh)
                         )
                     }
                     Box(
@@ -514,14 +556,14 @@ private fun HistorySkeletonList(contentPadding: PaddingValues) {
                             .fillMaxWidth(0.85f)
                             .height(16.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(SurfaceHigh)
+                            .background(colors.surfaceHigh)
                     )
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(0.55f)
                             .height(14.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(SurfaceHigh)
+                            .background(colors.surfaceHigh)
                     )
                 }
             }
@@ -540,8 +582,10 @@ private fun HistoryTopBar(
     onSearchQueryChange: (String) -> Unit,
     onEnterSearch: () -> Unit,
     onExitSearch: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onClearAll: () -> Unit = {}
 ) {
+    val colors = SynqviaTheme.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -549,7 +593,7 @@ private fun HistoryTopBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (!isSearchActive) {
-            // Normal top bar: 40dp circle back button + "Clipboard History" + 40dp circle search button
+            // Normal top bar: 40dp circle back button | "History" | 40dp circle search button | 40dp circle clear-all button
             CircleIconButton(
                 icon = Icons.AutoMirrored.Filled.ArrowBack,
                 onClick = onBack,
@@ -559,9 +603,11 @@ private fun HistoryTopBar(
             )
             Spacer(modifier = Modifier.width(12.dp))
             Text(
-                text = "Clipboard History",
+                text = "History",
                 style = SynqviaType.LargeTitle,
-                color = TextPrimary,
+                color = colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
             CircleIconButton(
@@ -570,6 +616,15 @@ private fun HistoryTopBar(
                 size = 40.dp,
                 iconSize = 20.dp,
                 contentDescription = "Search history"
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            CircleIconButton(
+                icon = Icons.Default.DeleteSweep,
+                onClick = onClearAll,
+                size = 40.dp,
+                iconSize = 20.dp,
+                tint = colors.red,
+                contentDescription = "Clear all history"
             )
         } else {
             // Search mode: 40dp back/exit button + inline search field + close (X) button
@@ -586,8 +641,8 @@ private fun HistoryTopBar(
                     .weight(1f)
                     .height(40.dp)
                     .clip(RoundedCornerShape(20.dp))
-                    .background(SurfaceHigh)
-                    .border(1.dp, OutlineDark, RoundedCornerShape(20.dp))
+                    .background(colors.surfaceHigh)
+                    .border(1.dp, colors.outline, RoundedCornerShape(20.dp))
                     .padding(horizontal = 14.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
@@ -595,15 +650,15 @@ private fun HistoryTopBar(
                     Text(
                         text = "Search clipboard history…",
                         style = SynqviaType.Body,
-                        color = TextSecondary
+                        color = colors.textSecondary
                     )
                 }
                 BasicTextField(
                     value = searchQuery,
                     onValueChange = onSearchQueryChange,
                     singleLine = true,
-                    textStyle = SynqviaType.Body.copy(color = TextPrimary),
-                    cursorBrush = SolidColor(PrimaryCyan),
+                    textStyle = SynqviaType.Body.copy(color = colors.textPrimary),
+                    cursorBrush = SolidColor(colors.primary),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -625,7 +680,7 @@ private fun HistoryTopBar(
 }
 
 /**
- * Filter pill: 34dp height, fully rounded, cyan when selected, surfaceHigh when unselected.
+ * Filter pill: 34dp height, fully rounded, primary when selected, chipUnselectedBg when unselected.
  */
 @Composable
 private fun HistoryFilterPill(
@@ -635,15 +690,21 @@ private fun HistoryFilterPill(
     count: Int? = null
 ) {
     val haptics = LocalAppHaptics.current
+    val colors = SynqviaTheme.colors
+    val isDark = SynqviaTheme.isDark
 
     Box(
         modifier = Modifier
             .height(34.dp)
             .clip(RoundedCornerShape(17.dp))
-            .background(if (selected) PrimaryCyan else SurfaceHigh)
+            .background(if (selected) colors.primary else colors.chipUnselectedBg)
             .border(
                 width = 1.dp,
-                color = if (selected) PrimaryCyan else OutlineDark,
+                color = if (isDark) {
+                    if (selected) colors.primary else colors.outline
+                } else {
+                    if (selected) colors.primary else Color.Transparent
+                },
                 shape = RoundedCornerShape(17.dp)
             )
             .pressable(targetScale = 0.96f) {
@@ -653,7 +714,7 @@ private fun HistoryFilterPill(
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center
     ) {
-        val textColor = if (selected) OnPrimaryCyan else TextSecondary
+        val textColor = if (selected) colors.onPrimary else colors.chipUnselectedText
         val textStyle = if (selected) SynqviaType.ChipSelected.copy(color = textColor) else SynqviaType.Chip.copy(color = textColor)
 
         if (count != null) {

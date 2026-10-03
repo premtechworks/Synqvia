@@ -44,14 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.github.premtechworks.synqvia.data.ClipEntity
-import com.github.premtechworks.synqvia.ui.theme.AccentAmber
-import com.github.premtechworks.synqvia.ui.theme.AccentGold
-import com.github.premtechworks.synqvia.ui.theme.AccentRed
-import com.github.premtechworks.synqvia.ui.theme.BgTop
-import com.github.premtechworks.synqvia.ui.theme.OutlineDark
-import com.github.premtechworks.synqvia.ui.theme.PrimaryCyan
-import com.github.premtechworks.synqvia.ui.theme.SurfaceDark
-import com.github.premtechworks.synqvia.ui.theme.SurfaceHigh
+import com.github.premtechworks.synqvia.ui.components.SynqviaLightDarkPreview
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -62,8 +55,8 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.graphicsLayer
-import com.github.premtechworks.synqvia.ui.CardGlassStyle
-import com.github.premtechworks.synqvia.ui.GlassCardBorderBrush
+import com.github.premtechworks.synqvia.ui.rememberCardGlassStyle
+import com.github.premtechworks.synqvia.ui.rememberGlassCardBorderBrush
 import com.github.premtechworks.synqvia.ui.motion.LocalAppHaptics
 import com.github.premtechworks.synqvia.ui.LocalHazeState
 import com.github.premtechworks.synqvia.ui.LocalIsBlurSupported
@@ -73,7 +66,7 @@ import com.github.premtechworks.synqvia.ui.motion.pressable
 import com.github.premtechworks.synqvia.ui.motion.snappySpring
 import com.github.premtechworks.synqvia.ui.motion.softSpring
 import com.github.premtechworks.synqvia.ui.synqviaGlass
-import com.github.premtechworks.synqvia.ui.theme.AccentGreen
+import com.github.premtechworks.synqvia.ui.theme.synqviaCardShadow
 import com.github.premtechworks.synqvia.ui.util.formatHistoryItemTime
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -87,9 +80,6 @@ import kotlin.math.abs
 import com.github.premtechworks.synqvia.ui.theme.SynqviaTheme
 import com.github.premtechworks.synqvia.ui.theme.SynqviaType
 import com.github.premtechworks.synqvia.ui.theme.SynqviaTypography
-import com.github.premtechworks.synqvia.ui.theme.TextPrimary
-import com.github.premtechworks.synqvia.ui.theme.TextSecondary
-import com.github.premtechworks.synqvia.ui.theme.TextTertiary
 
 /**
  * Redesigned History Row:
@@ -108,6 +98,8 @@ fun ClipHistoryItem(
     onResend: () -> Unit,
     onDelete: () -> Unit,
     searchQuery: String = "",
+    precomputedTime: String? = null,
+    precomputedHost: String? = null,
     modifier: Modifier = Modifier
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -119,15 +111,17 @@ fun ClipHistoryItem(
     val coroutineScope = rememberCoroutineScope()
 
     val pinScale = remember { Animatable(1f) }
+    val colors = SynqviaTheme.colors
+    val isDark = SynqviaTheme.isDark
     val pinColor by animateColorAsState(
-        targetValue = if (clip.pinned) AccentGold else TextTertiary,
+        targetValue = if (clip.pinned) colors.gold else colors.textTertiary,
         animationSpec = tween(durationMillis = 200),
         label = "pinColor"
     )
 
-    val offsetX = remember { Animatable(0f) }
-    var rowWidthPx by remember { mutableFloatStateOf(0f) }
-    var crossedThreshold by remember { mutableStateOf(false) }
+    val offsetX = remember(clip.id) { Animatable(0f) }
+    var rowWidthPx by remember(clip.id) { mutableFloatStateOf(0f) }
+    var crossedThreshold by remember(clip.id) { mutableStateOf(false) }
 
     val threshold = if (rowWidthPx > 0f) rowWidthPx * 0.45f else 1f
     val currentOffset = offsetX.value
@@ -147,7 +141,7 @@ fun ClipHistoryItem(
                             if (current < -t) {
                                 // Full swipe LEFT past 45% of the width -> delete
                                 if (!reduceMotion) {
-                                    offsetX.animateTo(-rowWidthPx, tween(150))
+                                    offsetX.animateTo(-rowWidthPx, tween(120, easing = DecelerateEasing))
                                 }
                                 onDelete()
                             } else if (current > t) {
@@ -200,7 +194,13 @@ fun ClipHistoryItem(
         // BACKGROUND ACTION ZONE (revealed on swipe)
         if (currentOffset != 0f) {
             val isLeftSwipe = currentOffset < 0
-            val zoneColor = if (isLeftSwipe) AccentRed.copy(alpha = 0.22f) else AccentGold.copy(alpha = 0.22f)
+            val zoneColor = if (isDark) {
+                if (isLeftSwipe) colors.red.copy(alpha = 0.22f) else colors.gold.copy(alpha = 0.22f)
+            } else {
+                if (isLeftSwipe) colors.red else colors.gold
+            }
+            val deleteIconTint = if (isDark) colors.red else Color.White
+            val pinIconTint = if (isDark) colors.gold else Color(0xFF0B1B33)
             val iconAlignment = if (isLeftSwipe) Alignment.CenterEnd else Alignment.CenterStart
             val progress = (abs(currentOffset) / threshold).coerceIn(0f, 1.2f)
 
@@ -215,7 +215,7 @@ fun ClipHistoryItem(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete",
-                        tint = AccentRed,
+                        tint = deleteIconTint,
                         modifier = Modifier
                             .size(24.dp)
                             .graphicsLayer {
@@ -227,7 +227,7 @@ fun ClipHistoryItem(
                     Icon(
                         imageVector = if (clip.pinned) Icons.Outlined.PushPin else Icons.Default.PushPin,
                         contentDescription = if (clip.pinned) "Unpin" else "Pin",
-                        tint = AccentGold,
+                        tint = pinIconTint,
                         modifier = Modifier
                             .size(24.dp)
                             .graphicsLayer {
@@ -246,7 +246,7 @@ fun ClipHistoryItem(
                 .graphicsLayer {
                     translationX = currentOffset
                 }
-                .background(SurfaceDark)
+                .background(colors.surface)
                 .pressable(
                     targetScale = 0.97f,
                     showOverlay = true,
@@ -272,15 +272,15 @@ fun ClipHistoryItem(
                     modifier = Modifier
                         .height(20.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(AccentAmber.copy(alpha = 0.14f))
-                        .border(1.dp, AccentAmber.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
+                        .background(colors.amberContainer)
+                        .border(1.dp, colors.amber.copy(alpha = 0.35f), RoundedCornerShape(10.dp))
                         .padding(horizontal = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "Conflict",
                         style = SynqviaType.Overline.copy(
-                            color = AccentAmber
+                            color = colors.amber
                         )
                     )
                 }
@@ -289,9 +289,9 @@ fun ClipHistoryItem(
             Spacer(modifier = Modifier.width(8.dp))
 
             Text(
-                text = formatHistoryItemTime(clip.ts),
+                text = precomputedTime ?: formatHistoryItemTime(clip.ts),
                 style = SynqviaType.CaptionTnum,
-                color = TextSecondary
+                color = colors.textSecondary
             )
 
             Spacer(modifier = Modifier.weight(1f))
@@ -352,7 +352,7 @@ fun ClipHistoryItem(
                 Icon(
                     imageVector = Icons.Default.MoreVert,
                     contentDescription = "More clip actions",
-                    tint = TextSecondary,
+                    tint = colors.textSecondary,
                     modifier = Modifier.size(20.dp)
                 )
 
@@ -360,21 +360,24 @@ fun ClipHistoryItem(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
                     modifier = Modifier
+                        .then(
+                            if (!isDark) Modifier.synqviaCardShadow(elevation = 6.dp, shape = RoundedCornerShape(16.dp)) else Modifier
+                        )
                         .clip(RoundedCornerShape(16.dp))
                         .synqviaGlass(
                             hazeState = hazeState,
-                            style = CardGlassStyle,
+                            style = rememberCardGlassStyle(),
                             isBlurSupported = isBlurSupported,
-                            fallbackColor = SurfaceHigh,
+                            fallbackColor = colors.surfaceHigh,
                             shape = RoundedCornerShape(16.dp)
                         )
-                        .border(1.dp, GlassCardBorderBrush, RoundedCornerShape(16.dp))
+                        .border(1.dp, rememberGlassCardBorderBrush(), RoundedCornerShape(16.dp))
                 ) {
                     DropdownMenuItem(
                         text = {
                             Text(
                                 text = if (isCopied) "Copied" else "Copy",
-                                color = if (isCopied) AccentGreen else TextPrimary,
+                                color = if (isCopied) colors.green else colors.textPrimary,
                                 style = SynqviaTypography.Body
                             )
                         },
@@ -390,14 +393,14 @@ fun ClipHistoryItem(
                                     Icon(
                                         Icons.Default.Check,
                                         contentDescription = null,
-                                        tint = AccentGreen,
+                                        tint = colors.green,
                                         modifier = Modifier.size(18.dp)
                                     )
                                 } else {
                                     Icon(
                                         Icons.Default.ContentCopy,
                                         contentDescription = null,
-                                        tint = PrimaryCyan,
+                                        tint = colors.primary,
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }
@@ -415,9 +418,9 @@ fun ClipHistoryItem(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Share", color = TextPrimary, style = SynqviaTypography.Body) },
+                        text = { Text("Share", color = colors.textPrimary, style = SynqviaTypography.Body) },
                         leadingIcon = {
-                            Icon(Icons.Default.Share, contentDescription = null, tint = PrimaryCyan, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Share, contentDescription = null, tint = colors.primary, modifier = Modifier.size(18.dp))
                         },
                         onClick = {
                             haptics.tick()
@@ -426,9 +429,9 @@ fun ClipHistoryItem(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Resend to PC", color = TextPrimary, style = SynqviaTypography.Body) },
+                        text = { Text("Resend to PC", color = colors.textPrimary, style = SynqviaTypography.Body) },
                         leadingIcon = {
-                            Icon(Icons.Default.Sync, contentDescription = null, tint = PrimaryCyan, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Sync, contentDescription = null, tint = colors.primary, modifier = Modifier.size(18.dp))
                         },
                         onClick = {
                             haptics.tick()
@@ -440,7 +443,7 @@ fun ClipHistoryItem(
                         text = {
                             Text(
                                 text = if (clip.pinned) "Unpin" else "Pin",
-                                color = if (clip.pinned) AccentGold else TextPrimary,
+                                color = if (clip.pinned) colors.gold else colors.textPrimary,
                                 style = SynqviaTypography.Body
                             )
                         },
@@ -448,7 +451,7 @@ fun ClipHistoryItem(
                             Icon(
                                 imageVector = if (clip.pinned) Icons.Default.PushPin else Icons.Outlined.PushPin,
                                 contentDescription = null,
-                                tint = if (clip.pinned) AccentGold else TextTertiary,
+                                tint = if (clip.pinned) colors.gold else colors.textTertiary,
                                 modifier = Modifier.size(18.dp)
                             )
                         },
@@ -459,9 +462,9 @@ fun ClipHistoryItem(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete", color = AccentRed, style = SynqviaTypography.Body) },
+                        text = { Text("Delete", color = colors.red, style = SynqviaTypography.Body) },
                         leadingIcon = {
-                            Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = AccentRed, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = colors.red, modifier = Modifier.size(18.dp))
                         },
                         onClick = {
                             haptics.reject()
@@ -476,12 +479,12 @@ fun ClipHistoryItem(
         Spacer(modifier = Modifier.height(4.dp))
 
         // If a clip is a URL, show its host in cyan (12sp SemiBold) above the text
-        val urlHost = remember(clip.text) { com.github.premtechworks.synqvia.ui.util.UrlUtil.extractHost(clip.text) }
+        val urlHost = precomputedHost ?: remember(clip.text) { com.github.premtechworks.synqvia.ui.util.UrlUtil.extractHost(clip.text) }
         if (urlHost != null) {
             Text(
                 text = urlHost,
                 style = SynqviaType.CaptionSemiBold,
-                color = PrimaryCyan,
+                color = colors.primary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -493,14 +496,14 @@ fun ClipHistoryItem(
             Text(
                 text = "•••••••• (Sensitive Content)",
                 style = SynqviaTypography.Body,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 maxLines = 1
             )
         } else if (clip.text.isEmpty()) {
             Text(
                 text = "(empty clipboard)",
                 style = SynqviaTypography.Body,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 maxLines = 1
             )
         } else {
@@ -516,7 +519,7 @@ fun ClipHistoryItem(
                         val index = lowerText.indexOf(lowerQuery, startIndex)
                         if (index == -1) break
                         builder.addStyle(
-                            androidx.compose.ui.text.SpanStyle(background = PrimaryCyan.copy(alpha = 0.18f)),
+                            androidx.compose.ui.text.SpanStyle(background = colors.primary.copy(alpha = if (isDark) 0.18f else 0.14f)),
                             index,
                             index + lowerQuery.length
                         )
@@ -529,7 +532,7 @@ fun ClipHistoryItem(
             Text(
                 text = highlightedText,
                 style = SynqviaTypography.Body,
-                color = TextPrimary,
+                color = colors.textPrimary,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
@@ -541,7 +544,7 @@ fun ClipHistoryItem(
         Text(
             text = "${clip.text.length} chars",
             style = SynqviaType.CaptionTnum,
-            color = TextSecondary
+            color = colors.textSecondary
         )
     }
 }
@@ -576,11 +579,11 @@ fun ClipHistoryItem(
 // Previews
 // ==========================================
 
-@Preview(name = "Clip Row - From PC (Pinned)", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewClipHistoryItemPinned() {
     SynqviaTheme {
-        Box(modifier = Modifier.background(SurfaceDark).padding(8.dp)) {
+        Box(modifier = Modifier.background(SynqviaTheme.colors.surface).padding(8.dp)) {
             ClipHistoryItem(
                 clip = ClipEntity(
                     id = "p1",
@@ -601,11 +604,11 @@ fun PreviewClipHistoryItemPinned() {
     }
 }
 
-@Preview(name = "Clip Row - Empty Text", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewClipHistoryItemEmpty() {
     SynqviaTheme {
-        Box(modifier = Modifier.background(SurfaceDark).padding(8.dp)) {
+        Box(modifier = Modifier.background(SynqviaTheme.colors.surface).padding(8.dp)) {
             ClipHistoryItem(
                 clip = ClipEntity(
                     id = "p2",
@@ -626,11 +629,11 @@ fun PreviewClipHistoryItemEmpty() {
     }
 }
 
-@Preview(name = "Clip Row - Sensitive Content", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewClipHistoryItemSensitive() {
     SynqviaTheme {
-        Box(modifier = Modifier.background(SurfaceDark).padding(8.dp)) {
+        Box(modifier = Modifier.background(SynqviaTheme.colors.surface).padding(8.dp)) {
             ClipHistoryItem(
                 clip = ClipEntity(
                     id = "p3",

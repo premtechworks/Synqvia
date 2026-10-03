@@ -29,6 +29,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -41,9 +44,14 @@ import android.os.Build
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import java.util.concurrent.ConcurrentHashMap
+import com.github.premtechworks.synqvia.ui.screens.HistoryUiState
+import com.github.premtechworks.synqvia.ui.util.buildHistoryGroups
 
 data class UndoDeleteEvent(
     val clipId: String,
@@ -109,7 +117,6 @@ class MainViewModel(
     val syncTextOnly: StateFlow<Boolean> = syncPreferences.syncTextOnlyFlow
     val clearOnDisconnect: StateFlow<Boolean> = syncPreferences.clearOnDisconnectFlow
     val themeMode: StateFlow<String> = syncPreferences.themeModeFlow
-    val dynamicColor: StateFlow<Boolean> = syncPreferences.dynamicColorFlow
     val reduceMotionFollowSystem: StateFlow<Boolean> = syncPreferences.reduceMotionFollowSystemFlow
     val hapticFeedback: StateFlow<Boolean> = syncPreferences.hapticFeedbackFlow
 
@@ -176,11 +183,6 @@ class MainViewModel(
     fun setThemeMode(mode: String) {
         syncPreferences.themeMode = mode
         addLog("INFO", "Theme mode set to: $mode")
-    }
-
-    fun setDynamicColor(enabled: Boolean) {
-        syncPreferences.dynamicColor = enabled
-        addLog("INFO", "Dynamic color ${if (enabled) "enabled" else "disabled"}")
     }
 
     fun setReduceMotionFollowSystem(enabled: Boolean) {
@@ -327,6 +329,9 @@ class MainViewModel(
     private val _selectedTab = MutableStateFlow(MainTab.SYNC)
     val selectedTab: StateFlow<MainTab> = _selectedTab.asStateFlow()
 
+    private val _settingsTabReselectTrigger = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val settingsTabReselectTrigger: SharedFlow<Unit> = _settingsTabReselectTrigger.asSharedFlow()
+
     private val _userMessage = MutableStateFlow<String?>(null)
     val userMessage: StateFlow<String?> = _userMessage.asStateFlow()
 
@@ -347,34 +352,79 @@ class MainViewModel(
 
     private val pendingDeleteJobs = ConcurrentHashMap<String, Job>()
 
-    // Loading state for skeleton placeholder on first composition
-    val isClipsLoading: StateFlow<Boolean> = _searchQuery.flatMapLatest { query ->
-        clipRepository.searchClips(query)
-    }.map { false }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000L),
-        initialValue = true
-    )
+    // Shared raw clips search flow running on Dispatchers.Default
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val rawClipsFlow: Flow<List<ClipEntity>> = _searchQuery
+        .flatMapLatest { query -> clipRepository.searchClips(query) }
+        .flowOn(Dispatchers.Default)
 
-    // Reactive clips stream with real-time search & filter (excluding soft-deleted clips)
-    val filteredClips: StateFlow<List<ClipEntity>> = combine(
-        _searchQuery.flatMapLatest { query -> clipRepository.searchClips(query) },
+    // Single immutable UiState for History computed entirely on Dispatchers.Default
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val historyUiState: StateFlow<HistoryUiState> = combine(
+        rawClipsFlow,
         _filter,
-        _pendingDeletedClipIds
-    ) { clips, currentFilter, pendingDeleted ->
+        _pendingDeletedClipIds,
+        clipRepository.syncStats
+    ) { clips, currentFilter, pendingDeleted, stats ->
         val visibleClips = if (pendingDeleted.isEmpty()) clips else clips.filter { it.id !in pendingDeleted }
-        when (currentFilter) {
+        val filtered = when (currentFilter) {
             ClipFilter.ALL -> visibleClips
             ClipFilter.SENT -> visibleClips.filter { it.isLocal }
             ClipFilter.RECEIVED -> visibleClips.filter { it.isRemote }
             ClipFilter.CONFLICTS -> visibleClips.filter { it.conflictLoser }
             ClipFilter.PINNED -> visibleClips.filter { it.pinned }
         }
-    }.stateIn(
+
+        val groups = buildHistoryGroups(filtered)
+        HistoryUiState(
+            groups = groups,
+            rawClips = filtered,
+            totalCount = if (stats.totalCount > 0) stats.totalCount else filtered.size,
+            isLoading = false,
+            isCached = true
+        )
+    }.flowOn(Dispatchers.Default).stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000L),
+        initialValue = HistoryUiState(isLoading = true, isCached = false)
+    )
+
+    // Reactive clips stream with real-time search & filter (backwards compatible)
+    val filteredClips: StateFlow<List<ClipEntity>> = historyUiState
+        .map { it.rawClips }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000L),
+            initialValue = emptyList()
+        )
+
+    // Recent 5 activities flow for Dashboard (unfiltered by search/filter, respects soft deletes)
+    val recentClips: StateFlow<List<ClipEntity>> = combine(
+        clipRepository.allClips,
+        _pendingDeletedClipIds
+    ) { clips, pending ->
+        val visible = if (pending.isEmpty()) clips else clips.filter { it.id !in pending }
+        visible.take(5)
+    }.flowOn(Dispatchers.Default).stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000L),
         initialValue = emptyList()
     )
+
+    val isClipsLoading: StateFlow<Boolean> = historyUiState
+        .map { it.isLoading }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000L),
+            initialValue = false
+        )
+
+    init {
+        // Pre-warm history query on Dispatchers.Default so the first History tab tap is instant
+        viewModelScope.launch(Dispatchers.Default) {
+            historyUiState.first { it.isCached }
+        }
+    }
 
     private val _imeExpiryHours = MutableStateFlow(syncPreferences.imeExpiryHours)
     val imeExpiryHours: StateFlow<Int> = _imeExpiryHours.asStateFlow()
@@ -393,7 +443,19 @@ class MainViewModel(
     )
 
     fun setTab(tab: MainTab) {
-        _selectedTab.value = tab
+        if (_selectedTab.value == tab) {
+            if (tab == MainTab.SETTINGS) {
+                _settingsTabReselectTrigger.tryEmit(Unit)
+            }
+        } else {
+            _selectedTab.value = tab
+        }
+    }
+
+    fun onTabReselected(tab: MainTab) {
+        if (tab == MainTab.SETTINGS) {
+            _settingsTabReselectTrigger.tryEmit(Unit)
+        }
     }
 
     fun setSearchQuery(query: String) {
@@ -561,6 +623,10 @@ class MainViewModel(
             clipRepository.clearAll()
             _userMessage.value = "Clipboard history cleared"
             addLog("WARN", "History database cleared")
+            _pendingDeletedClipIds.value = emptySet()
+            pendingDeleteJobs.values.forEach { it.cancel() }
+            pendingDeleteJobs.clear()
+            _undoDeleteEvent.value = null
         }
     }
 

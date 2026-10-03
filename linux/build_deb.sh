@@ -3,7 +3,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-VERSION="1.0.0"
+VERSION="${1:-1.2.0}"
 PKG_DIR="/tmp/synqvia_${VERSION}_all"
 
 rm -rf "$PKG_DIR"

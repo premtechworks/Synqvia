@@ -3,7 +3,7 @@
     android:id="@+id/layout_ime_clipboard_panel"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/ime_background">
+    android:background="?attr/synqKbBg">
 
     <!-- Content Area: RecyclerView -->
     <androidx.recyclerview.widget.RecyclerView
@@ -29,6 +29,7 @@
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:contentDescription="@null"
+            android:tint="?attr/synqKeyHint"
             android:src="@drawable/ic_ime_empty" />
 
         <TextView
@@ -36,7 +37,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="@string/ime_no_clips"
-            android:textColor="#94A3B8"
+            android:textColor="?attr/synqKeyText"
             android:textSize="13sp"
             android:fontFamily="@font/inter_variable"
             android:fontVariationSettings="'wght' 600, 'opsz' 14" />
@@ -47,7 +48,7 @@
             android:layout_marginTop="4dp"
             android:gravity="center"
             android:text="Copied text appears here automatically."
-            android:textColor="#7A8CAB"
+            android:textColor="?attr/synqKeyHint"
             android:textSize="11sp"
             android:fontFamily="@font/inter_variable"
             android:fontVariationSettings="'wght' 400, 'opsz' 14" />

@@ -88,6 +88,10 @@ fun rememberSynqviaHaptics(
     val view = LocalView.current
     val context = LocalContext.current
     return remember(view, context, userEnabled) {
-        SynqviaHapticsImpl(view, context) { userEnabled }
+        com.github.premtechworks.synqvia.ui.haptics.AppHaptics(
+            view = view,
+            context = context,
+            isHapticsEnabledByUser = { userEnabled }
+        )
     }
 }

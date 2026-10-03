@@ -68,7 +68,6 @@ class SettingsPreferencesGatingTest {
         assertTrue(syncPreferences.syncTextOnly)
         assertFalse(syncPreferences.clearOnDisconnect)
         assertEquals("system", syncPreferences.themeMode)
-        assertFalse(syncPreferences.dynamicColor)
     }
 
     @Test
@@ -81,9 +80,17 @@ class SettingsPreferencesGatingTest {
 
         syncPreferences.themeMode = "dark"
         assertEquals("dark", syncPreferences.themeMode)
+    }
 
-        syncPreferences.dynamicColor = true
-        assertTrue(syncPreferences.dynamicColor)
+    @Test
+    fun syncPreferences_deletesStaleDynamicColorKeyOnInit() {
+        val rawPrefs = context.getSharedPreferences("sync_prefs", Context.MODE_PRIVATE)
+        rawPrefs.edit().putBoolean("dynamic_color", true).commit()
+        assertTrue(rawPrefs.contains("dynamic_color"))
+
+        // Initializing SyncPreferences should trigger cleanup
+        SyncPreferences(context)
+        assertFalse(rawPrefs.contains("dynamic_color"))
     }
 
     @Test

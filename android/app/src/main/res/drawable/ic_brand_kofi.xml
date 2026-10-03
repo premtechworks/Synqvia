@@ -1,0 +1,30 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Handle -->
+    <path
+        android:strokeColor="#FF1F2A44"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M 30,18.5 C 37,18.5 39.5,20.5 39.5,23 C 39.5,25.5 37,27.5 29.5,27.5" />
+    <!-- White Cup Body with Navy Outline -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:strokeColor="#FF1F2A44"
+        android:strokeWidth="2"
+        android:strokeLineJoin="round"
+        android:pathData="M 11,14.5 L 32,14.5 L 29.8,28.8 C 29.2,32 26,33.5 21.5,33.5 C 17,33.5 13.8,32 13.2,28.8 Z" />
+    <!-- Base line -->
+    <path
+        android:strokeColor="#FF1F2A44"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M 14.5,37 L 28.5,37" />
+    <!-- Centered Red Heart -->
+    <path
+        android:fillColor="#FFFF5E5B"
+        android:pathData="M 21.5,21 C 20.4,19 18,19 16.8,20.3 C 15.3,22 16,24.5 21.5,28 C 27,24.5 27.7,22 26.2,20.3 C 25,19 22.6,19 21.5,21 Z" />
+</vector>
+

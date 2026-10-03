@@ -20,6 +20,13 @@ data class SyncConfig(
 class SyncPreferences(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("sync_prefs", Context.MODE_PRIVATE)
 
+    init {
+        // One-time cleanup: delete stale dynamic_color preference key so old installs don't keep it
+        if (prefs.contains("dynamic_color")) {
+            prefs.edit().remove("dynamic_color").apply()
+        }
+    }
+
     val deviceId: String by lazy {
         val androidId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "device"
         "android-${androidId.take(16)}"
@@ -80,17 +87,6 @@ class SyncPreferences(context: Context) {
         set(value) {
             prefs.edit().putString(KEY_THEME_MODE, value).apply()
             _themeModeFlow.value = value
-        }
-
-    // Use Dynamic Color (default OFF)
-    private val _dynamicColorFlow = MutableStateFlow(prefs.getBoolean(KEY_DYNAMIC_COLOR, false))
-    val dynamicColorFlow: StateFlow<Boolean> = _dynamicColorFlow.asStateFlow()
-
-    var dynamicColor: Boolean
-        get() = prefs.getBoolean(KEY_DYNAMIC_COLOR, false)
-        set(value) {
-            prefs.edit().putBoolean(KEY_DYNAMIC_COLOR, value).apply()
-            _dynamicColorFlow.value = value
         }
 
     // Onboarding Done (default false)
@@ -200,7 +196,6 @@ class SyncPreferences(context: Context) {
         const val KEY_SYNC_TEXT_ONLY = "sync_text_only"
         const val KEY_CLEAR_ON_DISCONNECT = "clear_on_disconnect"
         const val KEY_THEME_MODE = "theme_mode"
-        const val KEY_DYNAMIC_COLOR = "dynamic_color"
         const val KEY_ONBOARDING_DONE = "onboarding_done"
         const val KEY_REDUCE_MOTION = "reduce_motion"
         const val KEY_HAPTIC_FEEDBACK = "haptic_feedback"

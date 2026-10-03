@@ -21,11 +21,11 @@
             android:id="@+id/tv_clip_source"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="#2200E5FF"
+            android:background="@drawable/bg_ime_pill_local"
             android:paddingHorizontal="6dp"
             android:paddingVertical="2dp"
             android:text="Local"
-            android:textColor="#00E5FF"
+            android:textColor="@color/ime_source_local_text"
             android:textSize="11sp"
             android:fontFamily="@font/inter_variable"
             android:fontVariationSettings="'wght' 600, 'opsz' 14" />
@@ -37,7 +37,7 @@
             android:layout_marginStart="8dp"
             android:layout_weight="1"
             android:text="Just now"
-            android:textColor="#7A8CAB"
+            android:textColor="?attr/synqTextSecondary"
             android:textSize="11sp"
             android:fontFamily="@font/inter_variable"
             android:fontVariationSettings="'wght' 500, 'opsz' 14"
@@ -51,6 +51,7 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/ime_pinned"
             android:padding="4dp"
+            android:tint="?attr/synqToolbarIconInactive"
             android:src="@drawable/ic_ime_pin" />
 
         <!-- Delete Button -->
@@ -62,6 +63,7 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/ime_delete"
             android:padding="5dp"
+            android:tint="?attr/synqToolbarIconInactive"
             android:src="@drawable/ic_ime_delete" />
 
     </LinearLayout>
@@ -75,7 +77,7 @@
         android:ellipsize="end"
         android:lineSpacingExtra="2dp"
         android:maxLines="3"
-        android:textColor="#FFFFFF"
+        android:textColor="?attr/synqKeyText"
         android:textSize="13sp"
         android:fontFamily="@font/inter_variable"
         android:fontVariationSettings="'wght' 400, 'opsz' 14" />

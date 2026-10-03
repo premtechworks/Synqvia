@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="@color/ime_key_enter_pressed">
+    android:color="?attr/synqKeyPressed">
     <item>
         <selector android:enterFadeDuration="50" android:exitFadeDuration="50">
             <item android:state_pressed="true">
                 <shape android:shape="rectangle">
                     <corners android:radius="@dimen/ime_key_radius" />
-                    <solid android:color="@color/ime_key_enter_pressed" />
+                    <solid android:color="?attr/synqKeyPressed" />
                 </shape>
             </item>
             <item>
                 <shape android:shape="rectangle">
                     <corners android:radius="@dimen/ime_key_radius" />
-                    <solid android:color="@color/ime_key_enter_background" />
+                    <solid android:color="?attr/synqEnterBg" />
                 </shape>
             </item>
         </selector>

@@ -2,6 +2,7 @@ package com.github.premtechworks.synqvia.ui.screens
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
@@ -29,7 +30,7 @@ class OnboardingAndPairScreenTest {
             }
         }
 
-        composeTestRule.onNodeWithText("Synqvia").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Synqvia").assertIsDisplayed()
         composeTestRule.onNodeWithText("Clipboard sync between Android and Linux.").assertIsDisplayed()
         composeTestRule.onNodeWithText("Offline & Private").assertIsDisplayed()
         composeTestRule.onNodeWithText("Text + History").assertIsDisplayed()

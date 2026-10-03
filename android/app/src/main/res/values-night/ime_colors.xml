@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Background & Toolbar -->
+    <color name="ime_background">#0A1224</color>
+    <color name="ime_toolbar_background">#0B1426</color>
+    <color name="ime_divider">#0FFFFFFF</color> <!-- 6% white -->
+
+    <!-- Keys -->
+    <color name="ime_key_letter_background">#16223A</color>
+    <color name="ime_key_letter_pressed">#1F3050</color>
+    <color name="ime_key_function_background">#111B2E</color>
+    <color name="ime_key_function_pressed">#1B2A44</color>
+    <color name="ime_key_enter_background">#12D4FF</color>
+    <color name="ime_key_enter_pressed">#0EA5E9</color>
+    <color name="ime_key_enter_icon">#04111F</color>
+
+    <!-- Key Labels -->
+    <color name="ime_key_text">#FFFFFF</color>
+    <color name="ime_key_text_secondary">#7C8BA1</color>
+    <color name="ime_key_hint">#7C8BA1</color>
+    <color name="ime_key_icon">#CBD5E1</color>
+
+    <!-- Key Preview Popups -->
+    <color name="ime_preview_bubble_background">#1F3050</color>
+    <color name="ime_preview_bubble_stroke">#12D4FF</color>
+
+    <!-- Toolbar Icons -->
+    <color name="ime_toolbar_btn_active_bg">#2E12D4FF</color> <!-- 18% cyan -->
+    <color name="ime_toolbar_btn_active_icon">#12D4FF</color>
+    <color name="ime_toolbar_btn_inactive_icon">#9FB0CC</color>
+
+    <!-- Clipboard History Cards -->
+    <color name="ime_card_surface">#101B2F</color>
+    <color name="ime_card_outline">#1F2E47</color>
+    <color name="ime_pin_gold">#F59E0B</color>
+    <color name="ime_pill_pc_bg">#2634D399</color> <!-- 15% #34D399 -->
+    <color name="ime_pill_pc_text">#34D399</color>
+    <color name="ime_source_pc_text">#34D399</color>
+    <color name="ime_pill_local_bg">#2660A5FA</color> <!-- 15% #60A5FA -->
+    <color name="ime_pill_local_text">#60A5FA</color>
+    <color name="ime_source_local_text">#60A5FA</color>
+</resources>

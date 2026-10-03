@@ -97,10 +97,13 @@ fun ScreenScaffold(
         label = "sticky_header_glass_alpha"
     )
 
+    val colors = com.github.premtechworks.synqvia.ui.theme.SynqviaTheme.colors
+    val isDark = colors.isDark
+
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(BgTop, BgBottom)))
+            .background(Brush.verticalGradient(listOf(colors.bgTop, colors.bgBottom)))
     ) {
         // Full window content (draws behind bottom bar and scrolls to full height)
         Box(
@@ -126,26 +129,27 @@ fun ScreenScaffold(
             ) {
                 // Glass background material (transparent at scroll 0, fades in after 8dp of scroll)
                 if (headerAlpha > 0.001f) {
+                    val headerGlassStyle = com.github.premtechworks.synqvia.ui.rememberHeaderGlassStyle()
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .graphicsLayer { alpha = headerAlpha }
                             .synqviaGlass(
                                 hazeState = hazeState,
-                                style = HeaderGlassStyle,
+                                style = headerGlassStyle,
                                 isBlurSupported = isBlurSupported,
-                                fallbackColor = Color(0xFF0B1426)
+                                fallbackColor = colors.surface
                             )
                     )
 
-                    // 0.5dp bottom hairline (white 10%)
+                    // 0.5dp bottom hairline (white 10% in dark, outline in light)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(0.5.dp)
                             .align(Alignment.BottomCenter)
                             .graphicsLayer { alpha = headerAlpha }
-                            .background(Color.White.copy(alpha = 0.10f))
+                            .background(if (isDark) Color.White.copy(alpha = 0.10f) else colors.outline)
                     )
                 }
 

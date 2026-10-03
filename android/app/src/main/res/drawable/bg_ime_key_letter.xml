@@ -1,20 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="@color/ime_key_letter_pressed">
-    <item>
-        <selector android:enterFadeDuration="50" android:exitFadeDuration="50">
-            <item android:state_pressed="true">
-                <shape android:shape="rectangle">
-                    <corners android:radius="@dimen/ime_key_radius" />
-                    <solid android:color="@color/ime_key_letter_pressed" />
-                </shape>
-            </item>
-            <item>
-                <shape android:shape="rectangle">
-                    <corners android:radius="@dimen/ime_key_radius" />
-                    <solid android:color="@color/ime_key_letter_background" />
-                </shape>
-            </item>
-        </selector>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 0.5dp bottom shadow in light mode, transparent in dark mode -->
+    <item android:top="0.5dp">
+        <shape android:shape="rectangle">
+            <corners android:radius="@dimen/ime_key_radius" />
+            <solid android:color="?attr/synqKeyShadow" />
+        </shape>
     </item>
-</ripple>
+    <item android:bottom="0.5dp">
+        <ripple android:color="?attr/synqKeyPressed">
+            <item>
+                <selector android:enterFadeDuration="50" android:exitFadeDuration="50">
+                    <item android:state_pressed="true">
+                        <shape android:shape="rectangle">
+                            <corners android:radius="@dimen/ime_key_radius" />
+                            <solid android:color="?attr/synqKeyPressed" />
+                        </shape>
+                    </item>
+                    <item>
+                        <shape android:shape="rectangle">
+                            <corners android:radius="@dimen/ime_key_radius" />
+                            <solid android:color="?attr/synqKeyBg" />
+                        </shape>
+                    </item>
+                </selector>
+            </item>
+        </ripple>
+    </item>
+</layer-list>

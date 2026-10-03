@@ -36,4 +36,93 @@
     <string name="status_syncing">Syncing clipboard…</string>
     <string name="label_sync_service">Sync Service</string>
     <string name="desc_sync_service">Background Bluetooth sync with PC</string>
+
+    <!-- Contact & Support -->
+    <string name="contact_support_title">Contact &amp; Support</string>
+    <string name="contact_support_subtitle">Help, feedback and source code</string>
+    <string name="back">Back</string>
+    <string name="navigate_back">Navigate back</string>
+
+    <string name="developer_overline">DEVELOPER</string>
+    <string name="developer_name">Prem</string>
+    <string name="developer_role">Developer · Synqvia</string>
+    <string name="developer_bio">Synqvia is developed and maintained by Prem as an open-source project. Questions, feedback and contributions are welcome.</string>
+    <string name="developer_avatar_cd">Developer avatar</string>
+
+    <string name="quick_links_overline">QUICK LINKS</string>
+    <string name="link_telegram_title">Join on Telegram</string>
+    <string name="link_telegram_subtitle">Get help and community support</string>
+    <string name="link_github_title">View on GitHub</string>
+    <string name="link_github_subtitle">Source code, issues and contributions</string>
+    <string name="link_kofi_title">Support on Ko-fi</string>
+    <string name="link_kofi_subtitle">Support continued development</string>
+
+    <string name="about_overline">ABOUT SYNQVIA</string>
+    <string name="about_version_label">Version</string>
+    <string name="about_license_label">License</string>
+    <string name="about_repository_label">Repository</string>
+    <string name="about_license_value">GPL-3.0</string>
+    <string name="about_repository_value">premtechworks/Synqvia</string>
+
+    <string name="accessibility_link_opens_browser">%1$s, opens in browser</string>
+    <string name="error_no_app_for_link">No app found to open this link</string>
+
+    <!-- FAQ and Still Need Help -->
+    <string name="faq_overline">COMMON QUESTIONS</string>
+    <string name="still_need_help_overline">STILL NEED HELP?</string>
+    <string name="footer_tagline">Offline. Private. Seamless.</string>
+
+    <string name="still_need_help_title">Can\'t find what you\'re looking for?</string>
+    <string name="still_need_help_prefix">"Feel free to reach out on "</string>
+    <string name="still_need_help_telegram">Telegram</string>
+    <string name="still_need_help_mid">" or "</string>
+    <string name="still_need_help_github">open an issue on GitHub</string>
+    <string name="still_need_help_suffix">.</string>
+
+    <string name="faq_q1_title">How to pair with my Linux PC?</string>
+    <string-array name="faq_q1_steps">
+        <item>On your PC, install Synqvia and start it with `synqvia --show`.</item>
+        <item>In a terminal run `bluetoothctl`, then `power on`, `discoverable on` and `pairable on`.</item>
+        <item>On this phone open Settings &gt; Connected devices &gt; Pair new device, pick your PC and confirm the code on both screens.</item>
+        <item>Back in the terminal run `trust &lt;phone MAC&gt;`.</item>
+        <item>Find your PC\'s address with `bluetoothctl show | grep Controller`, enter it in Synqvia (tap the connection card on the Sync tab, or edit it in Settings) and tap Pair &amp; Connect. The dot on the Sync tab turns green when connected.</item>
+    </string-array>
+
+    <string name="faq_q2_title">Why isn\'t clipboard syncing?</string>
+    <string-array name="faq_q2_steps">
+        <item>Check that the Sync tab shows Connected.</item>
+        <item>Make sure Auto Sync is on in Settings.</item>
+        <item>Android blocks background clipboard reading. For automatic capture, set Synqvia as your default keyboard (Setup tab).</item>
+        <item>Without it, use Share &gt; Send to PC, the text-selection menu, the Quick Settings tile, or Sync Now.</item>
+        <item>Only text is synced. Images and files are not supported yet.</item>
+        <item>Make sure Synqvia is running on your PC.</item>
+    </string-array>
+
+    <string name="faq_q3_title">Battery optimization issues</string>
+    <string-array name="faq_q3_steps">
+        <item>In Setup, make sure Unrestricted Battery shows Active.</item>
+        <item>In Android Settings &gt; Apps &gt; Synqvia &gt; Battery, choose Unrestricted.</item>
+        <item>Some phones also need Autostart / Allow background activity turned on, and the app locked in Recents.</item>
+        <item>Turn off "Pause app activity if unused" for Synqvia.</item>
+    </string-array>
+
+    <string name="faq_q4_title">Bluetooth connection problems</string>
+    <string-array name="faq_q4_steps">
+        <item>Bluetooth must be on for both devices.</item>
+        <item>The phone and PC must be paired, and the PC must trust the phone.</item>
+        <item>The MAC in Synqvia must match your PC\'s adapter (`bluetoothctl show | grep Controller`) and the RFCOMM channel (default 1) must match the PC.</item>
+        <item>Restart Synqvia on the PC (`synqvia --show`), then tap Sync Now.</item>
+        <item>Still failing? Remove the pairing on both devices and pair again.</item>
+        <item>Check Settings &gt; Protocol Diagnostic Log, or run `synqvia-cli log -n 50` on the PC.</item>
+    </string-array>
+
+    <string name="faq_q5_title">I want to contribute</string>
+    <string-array name="faq_q5_steps">
+        <item>Synqvia is open source (GPL-3.0): premtechworks/Synqvia on GitHub.</item>
+        <item>Report bugs and ideas in Issues; pull requests are welcome.</item>
+        <item>Run the tests before a PR: `./gradlew test` (Android) and `python3 -m pytest tests/ -v` (Linux).</item>
+        <item>Include your Linux distribution, Android version and logs in bug reports.</item>
+    </string-array>
+
+    <string name="action_view_on_github">View on GitHub</string>
 </resources>

@@ -60,7 +60,7 @@ import com.github.premtechworks.synqvia.ui.components.ScrollableColumn
 import com.github.premtechworks.synqvia.ui.components.SectionHeader
 import com.github.premtechworks.synqvia.ui.components.SourcePill
 import com.github.premtechworks.synqvia.ui.components.SynqviaCard
-import com.github.premtechworks.synqvia.ui.components.SynqviaLogoMark
+import com.github.premtechworks.synqvia.ui.components.SynqviaBrandLockup
 import com.github.premtechworks.synqvia.ui.components.formatLastSyncedText
 import com.github.premtechworks.synqvia.ui.theme.AccentAmber
 import com.github.premtechworks.synqvia.ui.theme.AccentBlue
@@ -76,6 +76,7 @@ import com.github.premtechworks.synqvia.ui.theme.SynqviaTypography
 import com.github.premtechworks.synqvia.ui.theme.TextPrimary
 import com.github.premtechworks.synqvia.ui.theme.TextSecondary
 import com.github.premtechworks.synqvia.ui.theme.TextTertiary
+import com.github.premtechworks.synqvia.ui.theme.synqviaCardShadow
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.derivedStateOf
@@ -104,16 +105,15 @@ fun DashboardScreen(
     val connectionState by viewModel.connectionState.collectAsState()
     val config by viewModel.config.collectAsState()
     val stats by viewModel.syncStats.collectAsState()
-    val clips by viewModel.filteredClips.collectAsState()
+    val recentClips by viewModel.recentClips.collectAsState()
     val isKeyboardWarningVisible by viewModel.isKeyboardWarningVisible.collectAsState()
     val context = LocalContext.current
-    val latestClip = clips.firstOrNull()
 
     DashboardContent(
         connectionState = connectionState,
         config = config,
         stats = stats,
-        latestClip = latestClip,
+        recentClips = recentClips,
         isKeyboardWarningVisible = isKeyboardWarningVisible,
         scrollState = scrollState,
         onSyncNow = { viewModel.syncNow() },
@@ -127,6 +127,7 @@ fun DashboardScreen(
             val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
             imm?.showInputMethodPicker()
         },
+        onClipClick = { clip -> viewModel.selectClipForDetail(clip) },
         modifier = modifier
     )
 }
@@ -137,7 +138,8 @@ fun DashboardContent(
     connectionState: SyncConnectionState,
     config: SyncConfig,
     stats: SyncStats,
-    latestClip: ClipEntity?,
+    latestClip: ClipEntity? = null,
+    recentClips: List<ClipEntity> = latestClip?.let { listOf(it) } ?: emptyList(),
     isKeyboardWarningVisible: Boolean,
     onSyncNow: () -> Unit,
     onSendTest: () -> Unit,
@@ -146,10 +148,13 @@ fun DashboardContent(
     onSelectFilter: (com.github.premtechworks.synqvia.ui.ClipFilter) -> Unit = {},
     onSnoozeWarning: () -> Unit = {},
     onSwitchIme: () -> Unit,
+    onClipClick: (ClipEntity) -> Unit = {},
     modifier: Modifier = Modifier,
     scrollState: ScrollState = rememberScrollState(),
     onOpenPair: () -> Unit = {}
 ) {
+    val colors = SynqviaTheme.colors
+    val isDark = SynqviaTheme.isDark
     val isScrolled by remember { derivedStateOf { scrollState.value > 8 } }
 
     ScreenScaffold(
@@ -162,14 +167,8 @@ fun DashboardContent(
                     .height(48.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                SynqviaLogoMark(size = 32.dp)
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Synqvia",
-                    style = SynqviaTypography.ScreenTitle,
-                    color = TextPrimary,
-                    modifier = Modifier.weight(1f)
-                )
+                SynqviaBrandLockup()
+                Spacer(modifier = Modifier.weight(1f))
                 CircleIconButton(
                     icon = Icons.Default.Settings,
                     onClick = { onNavigateTab(MainTab.SETTINGS) },
@@ -195,10 +194,6 @@ fun DashboardContent(
                 }
             }
         }
-        val relativeRecentTime = remember(latestClip?.ts, tick) {
-            formatClipTime(latestClip?.ts ?: 0L)
-        }
-
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = {
@@ -218,8 +213,8 @@ fun DashboardContent(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = contentPadding.calculateTopPadding()),
-                    containerColor = SurfaceHigh,
-                    color = PrimaryCyan
+                    containerColor = colors.surfaceHigh,
+                    color = colors.primary
                 )
             },
             modifier = Modifier.fillMaxSize()
@@ -240,7 +235,7 @@ fun DashboardContent(
                 onSendTest = onSendTest,
                 onReconnect = onReconnect,
                 onOpenPair = onOpenPair,
-                lastSyncTimestamp = latestClip?.ts ?: 0L,
+                lastSyncTimestamp = recentClips.firstOrNull()?.ts ?: latestClip?.ts ?: 0L,
                 modifier = Modifier.entryStagger(index = 0)
             )
 
@@ -248,13 +243,19 @@ fun DashboardContent(
         // C) KEYBOARD WARNING CARD (Conditional)
         // ==========================================
         if (isKeyboardWarningVisible) {
+            val kbCardBg = if (isDark) AccentAmber.copy(alpha = 0.10f) else colors.amberContainer
+            val kbCardBorder = if (isDark) AccentAmber.copy(alpha = 0.40f) else colors.amber.copy(alpha = 0.40f)
+            val kbShieldTint = if (isDark) AccentAmber else colors.amber
+            val kbBtnContainer = if (isDark) AccentAmber else colors.amber
+            val kbBtnContent = if (isDark) Color(0xFF04111F) else Color(0xFF3B2400)
+
             SynqviaCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("ime_privilege_card"),
                 shape = RoundedCornerShape(16.dp),
-                backgroundColor = AccentAmber.copy(alpha = 0.10f),
-                borderColor = AccentAmber.copy(alpha = 0.40f),
+                backgroundColor = kbCardBg,
+                borderColor = kbCardBorder,
                 padding = 16.dp
             ) {
                 Column(
@@ -268,7 +269,7 @@ fun DashboardContent(
                     ) {
                         IconTile(
                             icon = Icons.Default.Security,
-                            tint = AccentAmber,
+                            tint = kbShieldTint,
                             size = 36.dp,
                             iconSize = 18.dp
                         )
@@ -277,7 +278,7 @@ fun DashboardContent(
                             Text(
                                 text = "Set Synqvia as your default keyboard",
                                 style = SynqviaType.Headline,
-                                color = TextPrimary,
+                                color = colors.textPrimary,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -285,7 +286,7 @@ fun DashboardContent(
                             Text(
                                 text = "Needed for automatic capture. Sync Now, Share and the Quick Tile still work.",
                                 style = SynqviaType.Caption,
-                                color = TextSecondary,
+                                color = colors.textSecondary,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -304,7 +305,7 @@ fun DashboardContent(
                         ) {
                             Text(
                                 text = "Later",
-                                style = SynqviaType.ButtonSmall.copy(color = TextSecondary)
+                                style = SynqviaType.ButtonSmall.copy(color = colors.textSecondary)
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -312,8 +313,8 @@ fun DashboardContent(
                             onClick = onSwitchIme,
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = AccentAmber,
-                                contentColor = Color(0xFF04111F)
+                                containerColor = kbBtnContainer,
+                                contentColor = kbBtnContent
                             ),
                             contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 0.dp),
                             modifier = Modifier.height(34.dp)
@@ -321,7 +322,7 @@ fun DashboardContent(
                             Text(
                                 text = "Set as default",
                                 style = SynqviaType.ButtonSmall.copy(
-                                    color = Color(0xFF04111F)
+                                    color = kbBtnContent
                                 )
                             )
                         }
@@ -339,10 +340,28 @@ fun DashboardContent(
                 .entryStagger(index = 2),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            val totalNumColor = if (isDark) PrimaryCyan else colors.blue
+            val totalContainer = if (isDark) SurfaceDark else colors.blueContainer
+            val totalBorder = if (isDark) OutlineDark else colors.blue.copy(alpha = 0.12f)
+
+            val sentNumColor = if (isDark) AccentBlue else colors.purple
+            val sentContainer = if (isDark) SurfaceDark else colors.purpleContainer
+            val sentBorder = if (isDark) OutlineDark else colors.purple.copy(alpha = 0.12f)
+
+            val recNumColor = if (isDark) AccentGreen else colors.green
+            val recContainer = if (isDark) SurfaceDark else colors.greenContainer
+            val recBorder = if (isDark) OutlineDark else colors.green.copy(alpha = 0.12f)
+
+            val lossNumColor = if (isDark) AccentRed else colors.red
+            val lossContainer = if (isDark) SurfaceDark else colors.redContainer
+            val lossBorder = if (isDark) OutlineDark else colors.red.copy(alpha = 0.12f)
+
             StatTile(
                 value = stats.totalCount,
                 label = "Total",
-                numberColor = PrimaryCyan,
+                numberColor = totalNumColor,
+                containerColor = totalContainer,
+                borderColor = totalBorder,
                 onClick = {
                     onSelectFilter(com.github.premtechworks.synqvia.ui.ClipFilter.ALL)
                     onNavigateTab(MainTab.HISTORY)
@@ -352,7 +371,9 @@ fun DashboardContent(
             StatTile(
                 value = stats.localSentCount,
                 label = "Sent",
-                numberColor = AccentBlue,
+                numberColor = sentNumColor,
+                containerColor = sentContainer,
+                borderColor = sentBorder,
                 onClick = {
                     onSelectFilter(com.github.premtechworks.synqvia.ui.ClipFilter.SENT)
                     onNavigateTab(MainTab.HISTORY)
@@ -362,7 +383,9 @@ fun DashboardContent(
             StatTile(
                 value = stats.remoteReceivedCount,
                 label = "Received",
-                numberColor = AccentGreen,
+                numberColor = recNumColor,
+                containerColor = recContainer,
+                borderColor = recBorder,
                 onClick = {
                     onSelectFilter(com.github.premtechworks.synqvia.ui.ClipFilter.RECEIVED)
                     onNavigateTab(MainTab.HISTORY)
@@ -372,7 +395,9 @@ fun DashboardContent(
             StatTile(
                 value = stats.conflictCount,
                 label = "Loss",
-                numberColor = AccentRed,
+                numberColor = lossNumColor,
+                containerColor = lossContainer,
+                borderColor = lossBorder,
                 onClick = {
                     onSelectFilter(com.github.premtechworks.synqvia.ui.ClipFilter.CONFLICTS)
                     onNavigateTab(MainTab.HISTORY)
@@ -391,55 +416,31 @@ fun DashboardContent(
             onAction = { onNavigateTab(MainTab.HISTORY) }
         )
 
-        if (latestClip != null) {
+        if (recentClips.isNotEmpty()) {
             SynqviaCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .entryStagger(index = 3),
                 shape = RoundedCornerShape(16.dp),
-                padding = 16.dp
+                padding = 0.dp
             ) {
-                // Top row: SourcePill + relative time (right-aligned)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    SourcePill(isFromPc = latestClip.isRemote)
-                    Text(
-                        text = relativeRecentTime,
-                        style = SynqviaTypography.Caption,
-                        color = TextSecondary
-                    )
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    recentClips.forEachIndexed { index, clip ->
+                        if (index > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(colors.divider)
+                            )
+                        }
+                        RecentActivityRow(
+                            clip = clip,
+                            tick = tick,
+                            onClick = { onClipClick(clip) }
+                        )
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Clip text: 14sp sans-serif, max 3 lines ellipsized
-                if (latestClip.text.isBlank()) {
-                    Text(
-                        text = "(empty clipboard)",
-                        style = SynqviaTypography.Body,
-                        color = TextTertiary
-                    )
-                } else {
-                    Text(
-                        text = latestClip.text,
-                        style = SynqviaTypography.Body,
-                        color = TextPrimary,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Footer: character count
-                Text(
-                    text = "${latestClip.text.length} chars",
-                    style = SynqviaTypography.Caption,
-                    color = TextSecondary
-                )
             }
         } else {
             SynqviaCard(
@@ -456,14 +457,14 @@ fun DashboardContent(
                     Icon(
                         imageVector = Icons.Default.ContentPaste,
                         contentDescription = null,
-                        tint = TextTertiary,
+                        tint = colors.textTertiary,
                         modifier = Modifier.size(32.dp)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Copy something on your PC and it will appear here",
                         style = SynqviaType.Footnote,
-                        color = TextSecondary,
+                        color = colors.textSecondary,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(10.dp))
@@ -472,7 +473,7 @@ fun DashboardContent(
                     ) {
                         Text(
                             text = "Send Test",
-                            style = SynqviaType.ButtonSmall.copy(color = PrimaryCyan)
+                            style = SynqviaType.ButtonSmall.copy(color = colors.primary)
                         )
                     }
                 }
@@ -491,24 +492,32 @@ private fun StatTile(
     value: Int,
     label: String,
     numberColor: Color,
+    containerColor: Color? = null,
+    borderColor: Color? = null,
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val haptics = LocalAppHaptics.current
+    val colors = SynqviaTheme.colors
+    val isDark = SynqviaTheme.isDark
+    val bg = containerColor ?: if (isDark) SurfaceDark else colors.surface
+    val border = borderColor ?: if (isDark) OutlineDark else colors.outline
+
     Box(
         modifier = modifier
             .height(72.dp)
+            .then(if (!isDark) Modifier.synqviaCardShadow(elevation = 2.dp, shape = RoundedCornerShape(14.dp)) else Modifier)
             .clip(RoundedCornerShape(14.dp))
-            .background(SurfaceDark)
-            .border(1.dp, OutlineDark, RoundedCornerShape(14.dp))
-            .clickable(
-                role = androidx.compose.ui.semantics.Role.Button,
+            .background(bg)
+            .border(1.dp, border, RoundedCornerShape(14.dp))
+            .pressable(
+                targetScale = 0.97f,
+                showOverlay = true,
                 onClick = {
                     haptics.tick()
                     onClick()
                 }
-            )
-            .pressable(targetScale = 0.97f, showOverlay = true),
+            ),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -523,9 +532,74 @@ private fun StatTile(
             Text(
                 text = label,
                 style = SynqviaTypography.Caption,
-                color = TextSecondary
+                color = colors.textSecondary
             )
         }
+    }
+}
+
+/**
+ * Clickable row for recent clipboard activities in the Dashboard card.
+ */
+@Composable
+private fun RecentActivityRow(
+    clip: ClipEntity,
+    tick: Long,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = SynqviaTheme.colors
+    val relativeTime = remember(clip.ts, tick) {
+        formatClipTime(clip.ts)
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        // Top line: SourcePill + relative time (right-aligned)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            SourcePill(isFromPc = clip.isRemote)
+            Text(
+                text = relativeTime,
+                style = SynqviaTypography.Caption,
+                color = colors.textSecondary
+            )
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Clip text: 14sp sans-serif, max 2 lines ellipsized
+        if (clip.text.isBlank()) {
+            Text(
+                text = "(empty clipboard)",
+                style = SynqviaTypography.Body,
+                color = colors.textTertiary
+            )
+        } else {
+            Text(
+                text = clip.text,
+                style = SynqviaTypography.Body,
+                color = colors.textPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        // Footer: character count
+        Text(
+            text = "${clip.text.length} chars",
+            style = SynqviaTypography.Caption,
+            color = colors.textSecondary
+        )
     }
 }
 

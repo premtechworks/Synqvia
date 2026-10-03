@@ -44,7 +44,8 @@ class ClipImeAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ClipViewHolder {
-        val view = LayoutInflater.from(parent.context)
+        val themedContext = KeyboardPalette.ensureThemedContext(parent.context)
+        val view = LayoutInflater.from(themedContext)
             .inflate(R.layout.item_ime_clip, parent, false)
         return ClipViewHolder(view)
     }
@@ -68,21 +69,21 @@ class ClipImeAdapter(
             // Text preview (mask if sensitive)
             if (clip.sensitive) {
                 tvText.text = context.getString(R.string.ime_sensitive_masked)
-                tvText.setTextColor(Color.parseColor("#94A3B8"))
+                tvText.setTextColor(KeyboardPalette.resolveThemeColor(context, R.attr.synqTextTertiary))
             } else {
                 tvText.text = clip.text
-                tvText.setTextColor(Color.WHITE)
+                tvText.setTextColor(KeyboardPalette.resolveThemeColor(context, R.attr.synqKeyText))
             }
 
             // Direction badge
             val isRemote = clip.direction == "remote"
             if (isRemote) {
                 tvSource.text = "PC"
-                tvSource.setTextColor(ContextCompat.getColor(context, R.color.ime_source_pc_text))
+                tvSource.setTextColor(KeyboardPalette.resolveThemeColor(context, R.attr.synqPillToPcFg))
                 tvSource.setBackgroundResource(R.drawable.bg_ime_pill_pc)
             } else {
                 tvSource.text = "Local"
-                tvSource.setTextColor(ContextCompat.getColor(context, R.color.ime_source_local_text))
+                tvSource.setTextColor(KeyboardPalette.resolveThemeColor(context, R.attr.synqPillFromPcFg))
                 tvSource.setBackgroundResource(R.drawable.bg_ime_pill_local)
             }
 
@@ -92,15 +93,15 @@ class ClipImeAdapter(
             // Pin state (gold when pinned)
             if (clip.pinned) {
                 btnPin.setImageResource(R.drawable.ic_ime_pin_filled)
-                btnPin.setColorFilter(ContextCompat.getColor(context, R.color.ime_pin_gold))
+                btnPin.setColorFilter(KeyboardPalette.resolveThemeColor(context, R.attr.synqPinGold))
                 btnPin.contentDescription = context.getString(R.string.ime_pinned)
             } else {
                 btnPin.setImageResource(R.drawable.ic_ime_pin)
-                btnPin.setColorFilter(Color.parseColor("#64748B"))
+                btnPin.setColorFilter(KeyboardPalette.resolveThemeColor(context, R.attr.synqToolbarIconInactive))
                 btnPin.contentDescription = context.getString(R.string.ime_unpinned)
             }
 
-            btnDelete.setColorFilter(Color.parseColor("#64748B"))
+            btnDelete.setColorFilter(KeyboardPalette.resolveThemeColor(context, R.attr.synqToolbarIconInactive))
 
             // Clicks
             itemView.setOnClickListener {

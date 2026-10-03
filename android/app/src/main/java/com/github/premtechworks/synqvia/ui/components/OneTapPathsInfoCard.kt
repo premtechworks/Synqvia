@@ -37,17 +37,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.github.premtechworks.synqvia.ui.motion.DecelerateEasing
 import com.github.premtechworks.synqvia.ui.motion.LocalAppHaptics
 import com.github.premtechworks.synqvia.ui.motion.snappySpring
-import com.github.premtechworks.synqvia.ui.theme.AccentBlue
-import com.github.premtechworks.synqvia.ui.theme.PrimaryCyan
 import com.github.premtechworks.synqvia.ui.theme.SynqviaTheme
 import com.github.premtechworks.synqvia.ui.theme.SynqviaType
-import com.github.premtechworks.synqvia.ui.theme.TextPrimary
-import com.github.premtechworks.synqvia.ui.theme.TextSecondary
 
 /**
  * "Quick ways to send" (collapsible, collapsed by default):
@@ -58,6 +55,7 @@ import com.github.premtechworks.synqvia.ui.theme.TextSecondary
 fun OneTapPathsInfoCard(
     modifier: Modifier = Modifier
 ) {
+    val colors = SynqviaTheme.colors
     var isExpanded by remember { mutableStateOf(false) }
     val haptics = LocalAppHaptics.current
 
@@ -71,48 +69,34 @@ fun OneTapPathsInfoCard(
         modifier = modifier
             .fillMaxWidth()
             .animateContentSize(snappySpring()),
-        padding = 16.dp
+        padding = 0.dp
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(role = Role.Button) {
-                    haptics.tick()
-                    isExpanded = !isExpanded
-                },
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconTile(
-                    icon = Icons.Default.TouchApp,
-                    tint = PrimaryCyan,
-                    size = 36.dp,
-                    iconSize = 18.dp
+        SettingsNavRow(
+            icon = Icons.Default.TouchApp,
+            title = "Quick ways to send",
+            iconContainerColor = colors.blueContainer,
+            iconContentColor = colors.blue,
+            trailing = {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = colors.textTertiary,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .graphicsLayer { rotationZ = chevronRotation }
                 )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Quick ways to send",
-                    style = SynqviaType.Headline,
-                    color = TextPrimary
-                )
+            },
+            modifier = Modifier.clickable(role = Role.Button) {
+                haptics.tick()
+                isExpanded = !isExpanded
             }
-
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowDown,
-                contentDescription = if (isExpanded) "Collapse" else "Expand",
-                tint = TextSecondary,
-                modifier = Modifier
-                    .size(24.dp)
-                    .graphicsLayer { rotationZ = chevronRotation }
-            )
-        }
+        )
 
         AnimatedVisibility(visible = isExpanded) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 16.dp),
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 QuickWayRow(
@@ -146,6 +130,7 @@ private fun QuickWayRow(
     title: String,
     subtitle: String
 ) {
+    val colors = SynqviaTheme.colors
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
@@ -154,13 +139,13 @@ private fun QuickWayRow(
             modifier = Modifier
                 .size(28.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(AccentBlue.copy(alpha = 0.14f)),
+                .background(if (colors.isDark) Color(0xFF3B82F6).copy(alpha = 0.14f) else colors.tileAutoSyncContainer),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = PrimaryCyan,
+                tint = if (colors.isDark) Color(0xFF00E5FF) else colors.primary,
                 modifier = Modifier.size(16.dp)
             )
         }
@@ -171,13 +156,13 @@ private fun QuickWayRow(
             Text(
                 text = title,
                 style = SynqviaType.Body,
-                color = TextPrimary
+                color = colors.textPrimary
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = subtitle,
                 style = SynqviaType.Caption,
-                color = TextSecondary
+                color = colors.textSecondary
             )
         }
     }

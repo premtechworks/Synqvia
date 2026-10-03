@@ -47,15 +47,11 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import com.github.premtechworks.synqvia.ui.motion.LocalReduceMotion
-import com.github.premtechworks.synqvia.ui.motion.pressable
-import com.github.premtechworks.synqvia.ui.motion.snappySpring
-import com.github.premtechworks.synqvia.ui.motion.softSpring
-import com.github.premtechworks.synqvia.ui.theme.OnPrimaryCyan
-import kotlin.math.absoluteValue
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
@@ -64,17 +60,15 @@ import androidx.compose.ui.unit.dp
 import com.github.premtechworks.synqvia.ui.MainViewModel
 import com.github.premtechworks.synqvia.ui.components.IconTile
 import com.github.premtechworks.synqvia.ui.components.PrimaryButton
-import com.github.premtechworks.synqvia.ui.components.SynqviaLogoMark
+import com.github.premtechworks.synqvia.ui.components.SynqviaBrandLockup
 import com.github.premtechworks.synqvia.ui.components.SynqviaScreen
-import com.github.premtechworks.synqvia.ui.theme.OutlineDark
-import com.github.premtechworks.synqvia.ui.theme.PrimaryCyan
-import com.github.premtechworks.synqvia.ui.theme.SurfaceHigh
-import com.github.premtechworks.synqvia.ui.theme.SurfaceInset
+import com.github.premtechworks.synqvia.ui.motion.LocalReduceMotion
+import com.github.premtechworks.synqvia.ui.motion.pressable
+import com.github.premtechworks.synqvia.ui.motion.snappySpring
+import com.github.premtechworks.synqvia.ui.motion.softSpring
 import com.github.premtechworks.synqvia.ui.theme.SynqviaTheme
 import com.github.premtechworks.synqvia.ui.theme.SynqviaType
-import com.github.premtechworks.synqvia.ui.theme.TextPrimary
-import com.github.premtechworks.synqvia.ui.theme.TextSecondary
-import com.github.premtechworks.synqvia.ui.theme.TextTertiary
+import kotlin.math.absoluteValue
 
 @Composable
 fun OnboardingScreen(
@@ -162,6 +156,7 @@ fun OnboardingContent(
                     .padding(bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                val colors = SynqviaTheme.colors
                 // 5 Dot Indicators: active is 20dp pill morphing with spring
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -179,7 +174,7 @@ fun OnboardingContent(
                                 .height(6.dp)
                                 .width(dotWidth)
                                 .clip(CircleShape)
-                                .background(if (isSelected) PrimaryCyan else OutlineDark)
+                                .background(if (isSelected) colors.primary else if (colors.isDark) colors.outline else Color(0xFFC5D2E6))
                         )
                     }
                 }
@@ -199,8 +194,8 @@ fun OnboardingContent(
                     onClick = onGetStarted,
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = PrimaryCyan,
-                        contentColor = OnPrimaryCyan
+                        containerColor = colors.primary,
+                        contentColor = colors.onPrimary
                     ),
                     interactionSource = btnInteractionSource,
                     modifier = Modifier
@@ -215,12 +210,12 @@ fun OnboardingContent(
                     ) {
                         Text(
                             text = "Get Started",
-                            style = SynqviaType.Button.copy(color = OnPrimaryCyan)
+                            style = SynqviaType.Button.copy(color = colors.onPrimary)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = "→",
-                            style = SynqviaType.Button.copy(color = OnPrimaryCyan),
+                            style = SynqviaType.Button.copy(color = colors.onPrimary),
                             modifier = Modifier.offset(x = arrowOffset)
                         )
                     }
@@ -275,6 +270,8 @@ private fun OnboardingHeroPage(pageOffset: Float = 0f) {
             .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        val colors = SynqviaTheme.colors
+
         // Header block at about 12% from the top
         Spacer(modifier = Modifier.weight(0.12f))
 
@@ -282,25 +279,17 @@ private fun OnboardingHeroPage(pageOffset: Float = 0f) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
-                SynqviaLogoMark(size = 40.dp)
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = "Synqvia",
-                    style = SynqviaType.LargeTitle,
-                    color = Color.White
-                )
-            }
+            SynqviaBrandLockup(
+                markSize = 36.dp,
+                wordmarkHeight = 22.dp
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = "Clipboard sync between Android and Linux.",
                 style = SynqviaType.Callout,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 textAlign = TextAlign.Center,
                 maxLines = 2
             )
@@ -327,13 +316,17 @@ private fun OnboardingHeroPage(pageOffset: Float = 0f) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                // Phone outline icon (44x72dp, 2dp cyan-ish stroke, green Android head inside)
+                // Phone outline icon (44x72dp, 2dp stroke, green Android head inside)
                 Box(
                     modifier = Modifier
                         .size(width = 44.dp, height = 72.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .border(2.dp, PrimaryCyan.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
-                        .background(SurfaceInset),
+                        .border(
+                            2.dp,
+                            if (colors.isDark) colors.primary.copy(alpha = 0.8f) else Color(0xFF0B1B33),
+                            RoundedCornerShape(8.dp)
+                        )
+                        .background(colors.surfaceInset),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -351,26 +344,31 @@ private fun OnboardingHeroPage(pageOffset: Float = 0f) {
 
                 Spacer(modifier = Modifier.width(6.dp))
 
-                // Bluetooth circle: 56dp, 2dp cyan stroke, cyan @ 14% fill, soft glow pulse (2.4s)
+                // Bluetooth circle: 56dp, soft glow pulse (2.4s)
+                // Light mode: solid primary fill with white glyph, soft primary @ 30% glow and a 2dp white ring
+                // Dark mode: cyan @ 14% fill, 2dp cyan border, cyan glyph, cyan glow
                 Box(contentAlignment = Alignment.Center) {
                     Box(
                         modifier = Modifier
                             .size(72.dp)
                             .clip(CircleShape)
-                            .background(PrimaryCyan.copy(alpha = if (reduceMotion) 0.12f else 0.15f * glowPulse))
+                            .background(
+                                if (colors.isDark) colors.primary.copy(alpha = if (reduceMotion) 0.12f else 0.15f * glowPulse)
+                                else colors.primary.copy(alpha = if (reduceMotion) 0.25f else 0.30f * glowPulse)
+                            )
                     )
                     Box(
                         modifier = Modifier
                             .size(56.dp)
                             .clip(CircleShape)
-                            .background(PrimaryCyan.copy(alpha = 0.14f))
-                            .border(2.dp, PrimaryCyan, CircleShape),
+                            .background(if (colors.isDark) colors.primary.copy(alpha = 0.14f) else colors.primary)
+                            .border(2.dp, if (colors.isDark) colors.primary else Color.White, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Bluetooth,
                             contentDescription = null,
-                            tint = PrimaryCyan,
+                            tint = if (colors.isDark) colors.primary else Color.White,
                             modifier = Modifier.size(28.dp)
                         )
                     }
@@ -383,18 +381,19 @@ private fun OnboardingHeroPage(pageOffset: Float = 0f) {
 
                 Spacer(modifier = Modifier.width(6.dp))
 
-                // Laptop (screen + base) in TextSecondary stroke with blinking cyan caret
+                // Laptop (screen + base) with blinking caret
+                val laptopOutline = if (colors.isDark) colors.textSecondary else Color(0xFF0B1B33).copy(alpha = 0.80f)
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    // Laptop Screen: 80x52dp, TextSecondary stroke, dark inset, prompt + blinking caret
+                    // Laptop Screen: 80x52dp, outline stroke, inset bg, prompt + blinking caret
                     Box(
                         modifier = Modifier
                             .size(width = 80.dp, height = 52.dp)
                             .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 2.dp, bottomEnd = 2.dp))
-                            .border(2.dp, TextSecondary, RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 2.dp, bottomEnd = 2.dp))
-                            .background(SurfaceInset),
+                            .border(2.dp, laptopOutline, RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 2.dp, bottomEnd = 2.dp))
+                            .background(colors.surfaceInset),
                         contentAlignment = Alignment.Center
                     ) {
                         Row(
@@ -404,32 +403,32 @@ private fun OnboardingHeroPage(pageOffset: Float = 0f) {
                             Text(
                                 text = "$ ",
                                 style = SynqviaType.MonoSmall.copy(
-                                    color = TextSecondary
+                                    color = laptopOutline
                                 )
                             )
                             Box(
                                 modifier = Modifier
                                     .size(width = 3.dp, height = 12.dp)
-                                    .background(PrimaryCyan.copy(alpha = if (reduceMotion) 1f else caretAlpha))
+                                    .background(colors.primary.copy(alpha = if (reduceMotion) 1f else caretAlpha))
                             )
                         }
                     }
 
                     Spacer(modifier = Modifier.height(1.dp))
 
-                    // Laptop Base: 94x6dp platform in TextSecondary stroke with center notch
+                    // Laptop Base: 94x6dp platform in outline stroke with center notch
                     Box(
                         modifier = Modifier
                             .size(width = 94.dp, height = 6.dp)
                             .clip(RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp, topStart = 1.dp, topEnd = 1.dp))
-                            .background(SurfaceInset)
-                            .border(1.5.dp, TextSecondary, RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp, topStart = 1.dp, topEnd = 1.dp)),
+                            .background(colors.surfaceInset)
+                            .border(1.5.dp, laptopOutline, RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp, topStart = 1.dp, topEnd = 1.dp)),
                         contentAlignment = Alignment.TopCenter
                     ) {
                         Box(
                             modifier = Modifier
                                 .size(width = 16.dp, height = 2.dp)
-                                .background(TextTertiary.copy(alpha = 0.5f))
+                                .background(if (colors.isDark) colors.textTertiary.copy(alpha = 0.5f) else Color(0xFF0B1B33).copy(alpha = 0.20f))
                         )
                     }
                 }
@@ -437,16 +436,28 @@ private fun OnboardingHeroPage(pageOffset: Float = 0f) {
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Feature Chips with 14dp cyan leading icons
+            // Feature Chips with colored icons
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                FeatureChip(text = "Offline & Private", icon = Icons.Default.Lock)
-                FeatureChip(text = "Text + History", icon = Icons.Default.Description)
+                FeatureChip(
+                    text = "Offline & Private",
+                    icon = Icons.Default.Lock,
+                    iconTint = if (colors.isDark) colors.primary else colors.green
+                )
+                FeatureChip(
+                    text = "Text + History",
+                    icon = Icons.Default.Description,
+                    iconTint = if (colors.isDark) colors.primary else colors.blue
+                )
             }
             Spacer(modifier = Modifier.height(8.dp))
-            FeatureChip(text = "No Internet Needed", icon = Icons.Default.WifiOff)
+            FeatureChip(
+                text = "No Internet Needed",
+                icon = Icons.Default.WifiOff,
+                iconTint = if (colors.isDark) colors.primary else colors.blue
+            )
         }
 
         Spacer(modifier = Modifier.weight(1f))
@@ -458,18 +469,25 @@ private fun OnboardingHeroPage(pageOffset: Float = 0f) {
 
 @Composable
 private fun PulsingDottedLine(pulsePhase: Float) {
+    val colors = SynqviaTheme.colors
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         repeat(6) { index ->
             val dist = (pulsePhase - index).let { if (it < 0) it + 6f else it }
-            val alpha = (1f - (dist / 6f)).coerceIn(0.25f, 1f)
+            val dotColor = if (colors.isDark) {
+                val alpha = (1f - (dist / 6f)).coerceIn(0.25f, 1f)
+                colors.primary.copy(alpha = alpha)
+            } else {
+                val highlightAlpha = (1f - (dist / 2f)).coerceIn(0f, 1f)
+                lerp(Color(0xFF9FB4D6), colors.primary, highlightAlpha)
+            }
             Box(
                 modifier = Modifier
                     .size(4.dp)
                     .clip(CircleShape)
-                    .background(PrimaryCyan.copy(alpha = alpha))
+                    .background(dotColor)
             )
         }
     }
@@ -478,13 +496,25 @@ private fun PulsingDottedLine(pulsePhase: Float) {
 @Composable
 private fun FeatureChip(
     text: String,
-    icon: ImageVector
+    icon: ImageVector,
+    iconTint: Color = SynqviaTheme.colors.primary
 ) {
+    val colors = SynqviaTheme.colors
     Box(
         modifier = Modifier
+            .then(
+                if (!colors.isDark) {
+                    Modifier.shadow(
+                        elevation = 2.dp,
+                        shape = RoundedCornerShape(16.dp),
+                        spotColor = colors.cardShadowSpot,
+                        ambientColor = colors.cardShadowAmbient
+                    )
+                } else Modifier
+            )
             .clip(RoundedCornerShape(16.dp))
-            .background(SurfaceHigh)
-            .border(1.dp, OutlineDark, RoundedCornerShape(16.dp))
+            .background(if (colors.isDark) colors.surfaceHigh else colors.surface)
+            .border(1.dp, colors.outline, RoundedCornerShape(16.dp))
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
         Row(
@@ -494,14 +524,14 @@ private fun FeatureChip(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = PrimaryCyan,
+                tint = iconTint,
                 modifier = Modifier.size(14.dp)
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = text,
-                style = SynqviaType.Chip.copy(color = TextSecondary),
-                color = TextSecondary
+                style = SynqviaType.Chip.copy(color = if (colors.isDark) colors.textSecondary else colors.textPrimary),
+                color = if (colors.isDark) colors.textSecondary else colors.textPrimary
             )
         }
     }
@@ -513,6 +543,7 @@ private fun OnboardingTemplatePage(
     title: String,
     description: String
 ) {
+    val colors = SynqviaTheme.colors
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -523,7 +554,7 @@ private fun OnboardingTemplatePage(
 
         IconTile(
             icon = icon,
-            tint = PrimaryCyan,
+            tint = colors.primary,
             size = 64.dp,
             iconSize = 32.dp
         )
@@ -533,7 +564,7 @@ private fun OnboardingTemplatePage(
         Text(
             text = title,
             style = SynqviaType.Title,
-            color = TextPrimary,
+            color = colors.textPrimary,
             textAlign = TextAlign.Center
         )
 
@@ -542,7 +573,7 @@ private fun OnboardingTemplatePage(
         Text(
             text = description,
             style = SynqviaType.Callout,
-            color = TextSecondary,
+            color = colors.textSecondary,
             textAlign = TextAlign.Center
         )
 

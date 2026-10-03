@@ -1,8 +1,23 @@
 package com.github.premtechworks.synqvia.ui.components
 
+import android.content.res.Configuration
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -13,13 +28,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.CallMade
@@ -28,89 +46,62 @@ import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.selection.toggleable
-import androidx.compose.ui.graphics.graphicsLayer
-import com.github.premtechworks.synqvia.ui.motion.LocalAppHaptics
-import com.github.premtechworks.synqvia.ui.motion.LocalReduceMotion
-import com.github.premtechworks.synqvia.ui.motion.pressable
-import com.github.premtechworks.synqvia.ui.motion.rememberIsScreenVisible
-import com.github.premtechworks.synqvia.ui.motion.snappySpring
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
-import com.github.premtechworks.synqvia.data.SyncPreferences
-import com.github.premtechworks.synqvia.ui.theme.TextTertiary
-import java.util.Locale
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.github.premtechworks.synqvia.data.SyncPreferences
 import com.github.premtechworks.synqvia.service.SyncConnectionState
-import com.github.premtechworks.synqvia.ui.theme.AccentAmber
-import com.github.premtechworks.synqvia.ui.theme.AccentBlue
-import com.github.premtechworks.synqvia.ui.theme.AccentGreen
-import com.github.premtechworks.synqvia.ui.theme.AccentRed
-import com.github.premtechworks.synqvia.ui.theme.BgBottom
-import com.github.premtechworks.synqvia.ui.theme.BgTop
-import com.github.premtechworks.synqvia.ui.theme.OnPrimaryCyan
-import com.github.premtechworks.synqvia.ui.theme.OutlineDark
-import com.github.premtechworks.synqvia.ui.theme.PrimaryCyan
-import com.github.premtechworks.synqvia.ui.theme.SurfaceDark
-import com.github.premtechworks.synqvia.ui.theme.SurfaceHigh
-import com.github.premtechworks.synqvia.ui.theme.SurfaceInset
+import com.github.premtechworks.synqvia.ui.motion.LocalAppHaptics
+import com.github.premtechworks.synqvia.ui.motion.LocalReduceMotion
+import com.github.premtechworks.synqvia.ui.motion.pressable
+import com.github.premtechworks.synqvia.ui.motion.rememberIsScreenVisible
+import com.github.premtechworks.synqvia.ui.motion.snappySpring
 import com.github.premtechworks.synqvia.ui.theme.SynqviaTheme
 import com.github.premtechworks.synqvia.ui.theme.SynqviaType
 import com.github.premtechworks.synqvia.ui.theme.SynqviaTypography
-import com.github.premtechworks.synqvia.ui.theme.TextPrimary
-import com.github.premtechworks.synqvia.ui.theme.TextSecondary
-import com.github.premtechworks.synqvia.ui.theme.TextTertiary
+import com.github.premtechworks.synqvia.ui.theme.synqviaCardShadow
+import java.util.Locale
+
+@Preview(name = "Light Mode", uiMode = Configuration.UI_MODE_NIGHT_NO, showBackground = true)
+@Preview(name = "Dark Mode", uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
+annotation class SynqviaLightDarkPreview
 
 // ==========================================
 // 1) SynqviaScreen
 // ==========================================
 
 /**
- * Screen wrapper with vertical navy gradient background, status-bar insets,
- * and bottom padding to clear the 64dp flat bottom navigation bar.
+ * Screen wrapper with vertical gradient background, status-bar insets,
+ * and bottom padding to clear the bottom navigation bar.
  */
 @Composable
 fun SynqviaScreen(
@@ -119,53 +110,17 @@ fun SynqviaScreen(
     bottomPadding: Dp = 0.dp,
     content: @Composable BoxScope.() -> Unit
 ) {
+    val colors = SynqviaTheme.colors
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(BgTop, BgBottom)))
+            .background(Brush.verticalGradient(listOf(colors.bgTop, colors.bgBottom)))
             .then(if (applyStatusBarInsets) Modifier.statusBarsPadding() else Modifier)
             .padding(bottom = bottomPadding),
         content = content
     )
 }
 
-/**
- * Stylized circular "Q" logo mark: cyan ring with 5dp stroke and a rounded tail at bottom-right.
- */
-@Composable
-fun SynqviaLogoMark(
-    modifier: Modifier = Modifier,
-    color: Color = PrimaryCyan,
-    size: Dp = 36.dp
-) {
-    androidx.compose.foundation.Canvas(modifier = modifier.size(size)) {
-        val strokeWidth = 5.dp.toPx()
-        val radius = (this.size.minDimension - strokeWidth * 2) / 2
-        val center = androidx.compose.ui.geometry.Offset(this.size.width / 2, this.size.height / 2)
-
-        // Outer cyan ring
-        drawCircle(
-            color = color,
-            radius = radius,
-            center = center,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = strokeWidth)
-        )
-
-        // Tail at bottom-right
-        val tailStartX = center.x + radius * 0.45f
-        val tailStartY = center.y + radius * 0.45f
-        val tailEndX = center.x + radius + strokeWidth * 0.65f
-        val tailEndY = center.y + radius + strokeWidth * 0.65f
-
-        drawLine(
-            color = color,
-            start = androidx.compose.ui.geometry.Offset(tailStartX, tailStartY),
-            end = androidx.compose.ui.geometry.Offset(tailEndX, tailEndY),
-            strokeWidth = strokeWidth,
-            cap = androidx.compose.ui.graphics.StrokeCap.Round
-        )
-    }
-}
 
 // ==========================================
 // 2) SynqviaCard
@@ -173,19 +128,27 @@ fun SynqviaLogoMark(
 
 /**
  * Standard card surface: 16dp rounded corners (20dp for hero cards),
- * 1dp outline border, flat SurfaceDark background, NO glow or blur.
+ * 1dp outline border, token surface background, and soft tinted shadow in light mode.
  */
 @Composable
 fun SynqviaCard(
     modifier: Modifier = Modifier,
     padding: Dp = 16.dp,
     shape: Shape = RoundedCornerShape(16.dp),
-    backgroundColor: Color = SurfaceDark,
-    borderColor: Color = OutlineDark,
+    backgroundColor: Color = SynqviaTheme.colors.surface,
+    borderColor: Color = SynqviaTheme.colors.outline,
+    elevation: Dp = 2.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val colors = SynqviaTheme.colors
     Column(
         modifier = modifier
+            .synqviaCardShadow(
+                elevation = elevation,
+                shape = shape,
+                ambientColor = colors.cardShadowAmbient,
+                spotColor = colors.cardShadowSpot
+            )
             .clip(shape)
             .background(backgroundColor)
             .border(1.dp, borderColor, shape)
@@ -199,30 +162,107 @@ fun SynqviaCard(
 // ==========================================
 
 /**
- * Icon container with 12dp radius, tint@14% alpha background, centered icon.
+ * Icon container with 12dp radius, container background, centered icon.
+ * Supports passing a container/content pair, with fallback to tint@14% alpha.
  */
 @Composable
 fun IconTile(
     icon: ImageVector,
     modifier: Modifier = Modifier,
-    tint: Color = PrimaryCyan,
+    containerColor: Color? = null,
+    contentColor: Color? = null,
+    tint: Color = SynqviaTheme.colors.primary,
     size: Dp = 44.dp,
     iconSize: Dp = 22.dp,
+    cornerRadius: Dp = 12.dp,
     contentDescription: String? = null
 ) {
+    val effectiveContentColor = contentColor ?: tint
+    val effectiveContainerColor = containerColor ?: effectiveContentColor.copy(alpha = 0.14f)
+
     Box(
         modifier = modifier
             .size(size)
-            .clip(RoundedCornerShape(12.dp))
-            .background(tint.copy(alpha = 0.14f)),
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(effectiveContainerColor),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = tint,
+            tint = effectiveContentColor,
             modifier = Modifier.size(iconSize)
         )
+    }
+}
+
+// ==========================================
+// SettingsNavRow
+// ==========================================
+
+/**
+ * Shared settings navigation / collapsible header row.
+ * Used by: Quick ways to send, Protocol Diagnostic Log, Contact & Support.
+ *
+ * Metrics:
+ * - IconTile: 36dp, 10dp radius, 18dp icon
+ * - Row padding: 16dp horizontal, 14dp vertical
+ * - Title: Headline SemiBold
+ * - Optional subtitle: Footnote textSecondary
+ * - Trailing chevron: 20dp textTertiary
+ */
+@Composable
+fun SettingsNavRow(
+    icon: ImageVector,
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    iconContainerColor: Color = SynqviaTheme.colors.blueContainer,
+    iconContentColor: Color = SynqviaTheme.colors.blue,
+    contentDescription: String? = null,
+    trailing: @Composable () -> Unit
+) {
+    val colors = SynqviaTheme.colors
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconTile(
+                icon = icon,
+                tint = iconContentColor,
+                containerColor = iconContainerColor,
+                contentColor = iconContentColor,
+                size = 36.dp,
+                iconSize = 18.dp,
+                cornerRadius = 10.dp,
+                contentDescription = contentDescription
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = SynqviaType.Headline,
+                    color = colors.textPrimary
+                )
+                if (!subtitle.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = subtitle,
+                        style = SynqviaType.Footnote,
+                        color = colors.textSecondary
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        trailing()
     }
 }
 
@@ -240,9 +280,9 @@ fun CircleIconButton(
     modifier: Modifier = Modifier,
     size: Dp = 40.dp,
     iconSize: Dp = 20.dp,
-    tint: Color = TextPrimary,
-    backgroundColor: Color = SurfaceHigh,
-    borderColor: Color = OutlineDark,
+    tint: Color = SynqviaTheme.colors.textPrimary,
+    backgroundColor: Color = SynqviaTheme.colors.surfaceHigh,
+    borderColor: Color = SynqviaTheme.colors.outline,
     contentDescription: String? = null
 ) {
     Box(
@@ -278,7 +318,7 @@ fun CircleIconButton(
 // ==========================================
 
 /**
- * 44dp height (customizable), 12dp radius, filled cyan with dark text, 14sp SemiBold.
+ * 44dp height (customizable), 12dp radius, filled primary with onPrimary text, 14sp SemiBold.
  */
 @Composable
 fun PrimaryButton(
@@ -287,27 +327,28 @@ fun PrimaryButton(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     enabled: Boolean = true,
-    height: androidx.compose.ui.unit.Dp = 44.dp,
+    height: Dp = 44.dp,
     loading: Boolean = false
 ) {
+    val colors = SynqviaTheme.colors
     Button(
         onClick = onClick,
         enabled = enabled && !loading,
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = PrimaryCyan,
-            contentColor = OnPrimaryCyan,
-            disabledContainerColor = PrimaryCyan.copy(alpha = 0.35f),
-            disabledContentColor = OnPrimaryCyan.copy(alpha = 0.5f)
+            containerColor = colors.primary,
+            contentColor = colors.onPrimary,
+            disabledContainerColor = colors.primary.copy(alpha = 0.35f),
+            disabledContentColor = colors.onPrimary.copy(alpha = 0.5f)
         ),
         modifier = modifier
             .height(height)
             .pressable(targetScale = 0.96f, enabled = enabled && !loading)
     ) {
         if (loading) {
-            androidx.compose.material3.CircularProgressIndicator(
+            CircularProgressIndicator(
                 modifier = Modifier.size(20.dp),
-                color = OnPrimaryCyan,
+                color = colors.onPrimary,
                 strokeWidth = 2.dp
             )
         } else {
@@ -322,37 +363,43 @@ fun PrimaryButton(
             Text(
                 text = text,
                 style = SynqviaTypography.ButtonLabel,
-                color = OnPrimaryCyan
+                color = colors.onPrimary
             )
         }
     }
 }
 
 // ==========================================
-// 6) OutlinedCyanButton
+// 6) OutlinedPrimaryButton
 // ==========================================
 
 /**
- * 44dp height (customizable), transparent background, 1dp cyan border, cyan text, 12dp radius.
+ * 44dp height (customizable), transparent background, 1dp border, primary text, 12dp radius.
+ * In light mode defaults to 1dp #BBD4FA border; in dark defaults to primary border.
  */
 @Composable
-fun OutlinedCyanButton(
+fun OutlinedPrimaryButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     enabled: Boolean = true,
-    height: androidx.compose.ui.unit.Dp = 44.dp
+    height: Dp = 44.dp,
+    borderColor: Color = if (SynqviaTheme.isDark) SynqviaTheme.colors.primary else Color(0xFFBBD4FA),
+    contentColor: Color = SynqviaTheme.colors.primary
 ) {
+    val strokeColor = if (enabled) borderColor else borderColor.copy(alpha = 0.35f)
+    val effectiveContentColor = if (enabled) contentColor else contentColor.copy(alpha = 0.35f)
+
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, if (enabled) PrimaryCyan else PrimaryCyan.copy(alpha = 0.35f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, strokeColor),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = Color.Transparent,
-            contentColor = PrimaryCyan,
-            disabledContentColor = PrimaryCyan.copy(alpha = 0.35f)
+            contentColor = effectiveContentColor,
+            disabledContentColor = contentColor.copy(alpha = 0.35f)
         ),
         modifier = modifier
             .height(height)
@@ -362,7 +409,7 @@ fun OutlinedCyanButton(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (enabled) PrimaryCyan else PrimaryCyan.copy(alpha = 0.35f),
+                tint = effectiveContentColor,
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -370,34 +417,59 @@ fun OutlinedCyanButton(
         Text(
             text = text,
             style = SynqviaTypography.ButtonLabel,
-            color = if (enabled) PrimaryCyan else PrimaryCyan.copy(alpha = 0.35f)
+            color = effectiveContentColor
         )
     }
 }
 
+@Composable
+fun OutlinedCyanButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    enabled: Boolean = true,
+    height: Dp = 44.dp,
+    borderColor: Color = if (SynqviaTheme.isDark) SynqviaTheme.colors.primary else Color(0xFFBBD4FA),
+    contentColor: Color = SynqviaTheme.colors.primary
+) {
+    OutlinedPrimaryButton(
+        text = text,
+        onClick = onClick,
+        modifier = modifier,
+        icon = icon,
+        enabled = enabled,
+        height = height,
+        borderColor = borderColor,
+        contentColor = contentColor
+    )
+}
+
 // ==========================================
-// 7) SmallCyanButton
+// 7) TonalButton
 // ==========================================
 
 /**
  * 34dp height, 10dp radius, 12sp SemiBold text, used in Setup & compact actions.
  */
 @Composable
-fun SmallCyanButton(
+fun TonalButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    containerColor: Color = SynqviaTheme.colors.tonalButtonContainer,
+    contentColor: Color = SynqviaTheme.colors.tonalButtonContent
 ) {
     Button(
         onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(10.dp),
         colors = ButtonDefaults.buttonColors(
-            containerColor = PrimaryCyan,
-            contentColor = OnPrimaryCyan,
-            disabledContainerColor = PrimaryCyan.copy(alpha = 0.35f),
-            disabledContentColor = OnPrimaryCyan.copy(alpha = 0.5f)
+            containerColor = containerColor,
+            contentColor = contentColor,
+            disabledContainerColor = containerColor.copy(alpha = 0.35f),
+            disabledContentColor = contentColor.copy(alpha = 0.5f)
         ),
         modifier = modifier
             .height(34.dp)
@@ -405,9 +477,28 @@ fun SmallCyanButton(
     ) {
         Text(
             text = text,
-            style = SynqviaType.ButtonSmall.copy(color = OnPrimaryCyan)
+            style = SynqviaType.ButtonSmall.copy(color = contentColor)
         )
     }
+}
+
+@Composable
+fun SmallCyanButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    containerColor: Color = SynqviaTheme.colors.tonalButtonContainer,
+    contentColor: Color = SynqviaTheme.colors.tonalButtonContent
+) {
+    TonalButton(
+        text = text,
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        containerColor = containerColor,
+        contentColor = contentColor
+    )
 }
 
 // ==========================================
@@ -416,15 +507,18 @@ fun SmallCyanButton(
 
 /**
  * 24dp height pill indicating direction:
- * "From PC" = green tint container with a small 14dp green circle containing a down-left arrow.
- * "To PC" = blue tint container with a small 14dp blue circle containing an up-right arrow.
+ * "From PC" = greenContainer bg + greenText fg + green circle glyph.
+ * "To PC" = blueContainer bg + blue fg + blue circle glyph.
  */
 @Composable
 fun SourcePill(
     isFromPc: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val accent = if (isFromPc) AccentGreen else AccentBlue
+    val colors = SynqviaTheme.colors
+    val isDark = colors.isDark
+    val bg = if (isFromPc) colors.pillFromPcBg else colors.pillToPcBg
+    val fg = if (isFromPc) colors.pillFromPcFg else colors.pillToPcFg
     val text = if (isFromPc) "From PC" else "To PC"
     val icon = if (isFromPc) Icons.AutoMirrored.Filled.CallReceived else Icons.AutoMirrored.Filled.CallMade
 
@@ -433,28 +527,32 @@ fun SourcePill(
         modifier = modifier
             .height(24.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(accent.copy(alpha = 0.14f))
-            .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+            .background(bg)
+            .border(
+                1.dp,
+                if (isDark) fg.copy(alpha = 0.35f) else Color.Transparent,
+                RoundedCornerShape(12.dp)
+            )
             .padding(horizontal = 8.dp)
     ) {
         Box(
             modifier = Modifier
                 .size(14.dp)
                 .clip(CircleShape)
-                .background(accent),
+                .background(fg),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = SurfaceInset,
+                tint = if (isDark) colors.surfaceInset else Color.White,
                 modifier = Modifier.size(9.dp)
             )
         }
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = text,
-            style = SynqviaType.Overline.copy(color = accent)
+            style = SynqviaType.Overline.copy(color = fg)
         )
     }
 }
@@ -464,16 +562,14 @@ fun SourcePill(
 // ==========================================
 
 enum class SynqviaStatusState {
-    CONNECTED,
-    CONNECTING,
-    OFFLINE
+    CONNECTED, CONNECTING, OFFLINE
 }
 
 /**
- * 12dp status dot:
- * - connected = soft pulse ring (scale 1 -> 2.2, alpha 0.5 -> 0, 2s loop, only while the screen is visible)
+ * 24dp status indicator:
+ * - connected = green dot with 24dp halo ring in light mode / pulse in dark mode
  * - connecting = amber breathing (alpha 0.4 <-> 1, 1.2s)
- * - offline = static
+ * - offline = static red
  * - color change tween 300ms
  */
 @Composable
@@ -481,21 +577,21 @@ fun StatusDot(
     state: SynqviaStatusState,
     modifier: Modifier = Modifier
 ) {
+    val colors = SynqviaTheme.colors
+    val isDark = colors.isDark
     val targetColor = when (state) {
-        SynqviaStatusState.CONNECTED -> AccentGreen
-        SynqviaStatusState.CONNECTING -> AccentAmber
-        SynqviaStatusState.OFFLINE -> AccentRed
+        SynqviaStatusState.CONNECTED -> colors.green
+        SynqviaStatusState.CONNECTING -> colors.amber
+        SynqviaStatusState.OFFLINE -> colors.red
     }
 
-    val animatedColor by androidx.compose.animation.animateColorAsState(
+    val animatedColor by animateColorAsState(
         targetValue = targetColor,
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300),
+        animationSpec = tween(durationMillis = 300),
         label = "status_dot_color"
     )
 
     val reduceMotion = LocalReduceMotion.current
-    // Infinite animations only run while the screen is actually on-screen; otherwise they would
-    // keep driving frames for a backgrounded app.
     val isVisible = rememberIsScreenVisible()
     val animateContinuously = !reduceMotion && isVisible
 
@@ -541,7 +637,15 @@ fun StatusDot(
             .semantics { contentDescription = statusDescription },
         contentAlignment = Alignment.Center
     ) {
-        if (animateContinuously && state == SynqviaStatusState.CONNECTED) {
+        if (!isDark && state == SynqviaStatusState.CONNECTED) {
+            // Light theme halo ring = green @ 20%, 24dp
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(colors.green.copy(alpha = 0.20f))
+            )
+        } else if (isDark && animateContinuously && state == SynqviaStatusState.CONNECTED) {
             Box(
                 modifier = Modifier
                     .size(12.dp)
@@ -595,7 +699,7 @@ fun StatusDot(
 // ==========================================
 
 /**
- * 16sp SemiBold title with an optional cyan 18dp leading icon, and an optional right-aligned cyan 13sp action.
+ * 16sp SemiBold title with an optional leading icon, and an optional right-aligned action.
  */
 @Composable
 fun SectionHeader(
@@ -605,6 +709,7 @@ fun SectionHeader(
     actionText: String? = null,
     onAction: (() -> Unit)? = null
 ) {
+    val colors = SynqviaTheme.colors
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -615,7 +720,7 @@ fun SectionHeader(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = PrimaryCyan,
+                    tint = colors.primary,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -623,13 +728,13 @@ fun SectionHeader(
             Text(
                 text = title,
                 style = SynqviaTypography.SectionTitle,
-                color = TextPrimary
+                color = colors.textPrimary
             )
         }
         if (actionText != null) {
             Text(
                 text = actionText,
-                style = SynqviaType.ButtonSmall.copy(color = PrimaryCyan),
+                style = SynqviaType.ButtonSmall.copy(color = colors.primary),
                 modifier = if (onAction != null) {
                     Modifier.clickable(
                         role = Role.Button,
@@ -656,6 +761,7 @@ fun SynqviaTopBar(
     centerTitle: Boolean = false,
     trailing: (@Composable () -> Unit)? = null
 ) {
+    val colors = SynqviaTheme.colors
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -681,7 +787,7 @@ fun SynqviaTopBar(
         Text(
             text = title,
             style = if (centerTitle) SynqviaType.Headline else SynqviaType.Title,
-            color = TextPrimary,
+            color = colors.textPrimary,
             textAlign = if (centerTitle) TextAlign.Center else TextAlign.Start,
             modifier = Modifier.weight(1f)
         )
@@ -702,7 +808,7 @@ fun SynqviaTopBar(
 fun RadarSignalIcon(
     isConnecting: Boolean,
     modifier: Modifier = Modifier,
-    color: Color = PrimaryCyan
+    color: Color = SynqviaTheme.colors.primary
 ) {
     val reduceMotion = LocalReduceMotion.current
     val infiniteTransition = rememberInfiniteTransition(label = "radar_pulse")
@@ -763,26 +869,28 @@ fun EditMacDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
+    val colors = SynqviaTheme.colors
     var text by remember { mutableStateOf(initialMac) }
     val isValid = remember(text) { text.isBlank() || SyncPreferences.isValidMac(text) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit PC Bluetooth MAC", color = TextPrimary) },
+        containerColor = colors.surface,
+        title = { Text("Edit PC Bluetooth MAC", color = colors.textPrimary) },
         text = {
             Column {
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it.uppercase(Locale.ROOT) },
-                    placeholder = { Text("AA:BB:CC:DD:EE:FF", color = TextTertiary) },
+                    placeholder = { Text("AA:BB:CC:DD:EE:FF", color = colors.textTertiary) },
                     singleLine = true,
                     isError = !isValid,
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryCyan,
-                        unfocusedBorderColor = OutlineDark,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        focusedBorderColor = colors.primary,
+                        unfocusedBorderColor = colors.outline,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary
                     ),
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Characters,
@@ -793,7 +901,7 @@ fun EditMacDialog(
                     Text(
                         text = "Invalid MAC format (must be XX:XX:XX:XX:XX:XX)",
                         style = SynqviaTypography.Caption,
-                        color = AccentRed,
+                        color = colors.red,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
@@ -804,19 +912,19 @@ fun EditMacDialog(
                 onClick = { onConfirm(text) },
                 enabled = isValid
             ) {
-                Text("Save", color = if (isValid) PrimaryCyan else TextTertiary)
+                Text("Save", color = if (isValid) colors.primary else colors.textTertiary)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextSecondary)
+                Text("Cancel", color = colors.textSecondary)
             }
         }
     )
 }
 
 // ==========================================
-// 12) Stubs for Rows (Finished in later prompts)
+// 12) Switch and Settings Rows
 // ==========================================
 
 /**
@@ -831,12 +939,17 @@ fun SynqviaSwitch(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
+    val colors = SynqviaTheme.colors
     val haptics = LocalAppHaptics.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val trackColor by androidx.compose.animation.animateColorAsState(
-        targetValue = if (checked) PrimaryCyan else SurfaceHigh,
+    val targetTrackColor = if (checked) colors.switchOnTrack else colors.switchOffTrack
+    val targetBorderColor = if (checked) colors.switchOnTrack else colors.switchOffBorder
+    val targetThumbColor = if (checked) colors.switchOnThumb else colors.switchOffThumb
+
+    val trackColor by animateColorAsState(
+        targetValue = targetTrackColor,
         animationSpec = tween(durationMillis = 200),
         label = "switch_track_color"
     )
@@ -861,7 +974,7 @@ fun SynqviaSwitch(
             .background(if (enabled) trackColor else trackColor.copy(alpha = 0.4f))
             .border(
                 1.dp,
-                if (checked) PrimaryCyan else OutlineDark,
+                targetBorderColor,
                 RoundedCornerShape(13.dp)
             )
             .then(
@@ -886,7 +999,7 @@ fun SynqviaSwitch(
                 .offset(x = thumbX)
                 .size(width = thumbWidth, height = 20.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(if (enabled) Color.White else Color.White.copy(alpha = 0.5f))
+                .background(if (enabled) targetThumbColor else targetThumbColor.copy(alpha = 0.5f))
         )
     }
 }
@@ -901,8 +1014,11 @@ fun SettingToggleRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
-    icon: ImageVector? = null
+    icon: ImageVector? = null,
+    iconContainer: Color? = null,
+    iconContent: Color? = null
 ) {
+    val colors = SynqviaTheme.colors
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -910,13 +1026,20 @@ fun SettingToggleRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {
-            IconTile(icon = icon, tint = PrimaryCyan, size = 36.dp, iconSize = 18.dp)
+            IconTile(
+                icon = icon,
+                containerColor = iconContainer,
+                contentColor = iconContent,
+                tint = colors.primary,
+                size = 36.dp,
+                iconSize = 18.dp
+            )
             Spacer(modifier = Modifier.width(12.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = SynqviaTypography.CardTitleSmall, color = TextPrimary)
+            Text(text = title, style = SynqviaTypography.CardTitleSmall, color = colors.textPrimary)
             if (subtitle != null) {
-                Text(text = subtitle, style = SynqviaTypography.Caption, color = TextSecondary)
+                Text(text = subtitle, style = SynqviaTypography.Caption, color = colors.textSecondary)
             }
         }
         Spacer(modifier = Modifier.width(8.dp))
@@ -938,6 +1061,7 @@ fun KeyValueRow(
     isMonospace: Boolean = false,
     onCopy: (() -> Unit)? = null
 ) {
+    val colors = SynqviaTheme.colors
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -945,12 +1069,12 @@ fun KeyValueRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(text = label, style = SynqviaTypography.Body, color = TextSecondary)
+        Text(text = label, style = SynqviaTypography.Body, color = colors.textSecondary)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = value,
                 style = if (isMonospace) SynqviaType.Mono else SynqviaType.Headline,
-                color = TextPrimary
+                color = colors.textPrimary
             )
             if (onCopy != null) {
                 Spacer(modifier = Modifier.width(8.dp))
@@ -976,9 +1100,12 @@ fun ChevronRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     value: String? = null,
-    valueColor: Color = TextSecondary,
-    icon: ImageVector? = null
+    valueColor: Color = SynqviaTheme.colors.textSecondary,
+    icon: ImageVector? = null,
+    iconContainer: Color? = null,
+    iconContent: Color? = null
 ) {
+    val colors = SynqviaTheme.colors
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -987,13 +1114,20 @@ fun ChevronRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (icon != null) {
-            IconTile(icon = icon, tint = PrimaryCyan, size = 36.dp, iconSize = 18.dp)
+            IconTile(
+                icon = icon,
+                containerColor = iconContainer,
+                contentColor = iconContent,
+                tint = colors.primary,
+                size = 36.dp,
+                iconSize = 18.dp
+            )
             Spacer(modifier = Modifier.width(12.dp))
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = SynqviaTypography.CardTitleSmall, color = TextPrimary)
+            Text(text = title, style = SynqviaTypography.CardTitleSmall, color = colors.textPrimary)
             if (subtitle != null) {
-                Text(text = subtitle, style = SynqviaTypography.Caption, color = TextSecondary)
+                Text(text = subtitle, style = SynqviaTypography.Caption, color = colors.textSecondary)
             }
         }
         if (value != null) {
@@ -1003,17 +1137,17 @@ fun ChevronRow(
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = null,
-            tint = TextTertiary,
+            tint = colors.textTertiary,
             modifier = Modifier.size(18.dp)
         )
     }
 }
 
 // ==========================================
-// Previews for every component
+// Previews for every component (Light & Dark)
 // ==========================================
 
-@Preview(name = "Synqvia Screen Preview", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewSynqviaScreen() {
     SynqviaTheme {
@@ -1027,75 +1161,75 @@ fun PreviewSynqviaScreen() {
     }
 }
 
-@Preview(name = "Synqvia Card Preview", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewSynqviaCard() {
     SynqviaTheme {
-        Box(modifier = Modifier.background(BgTop).padding(16.dp)) {
+        Box(modifier = Modifier.background(SynqviaTheme.colors.bgTop).padding(16.dp)) {
             SynqviaCard {
-                Text(text = "Synqvia Card Title", style = SynqviaTypography.CardTitle)
+                Text(text = "Synqvia Card Title", style = SynqviaTypography.CardTitle, color = SynqviaTheme.colors.textPrimary)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "Flat card with 16dp radius and 1dp outline border.", style = SynqviaTypography.Body)
+                Text(text = "Card with 16dp radius and 1dp outline border.", style = SynqviaTypography.Body, color = SynqviaTheme.colors.textSecondary)
             }
         }
     }
 }
 
-@Preview(name = "Icon Tile Preview", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewIconTile() {
     SynqviaTheme {
-        Box(modifier = Modifier.background(BgTop).padding(16.dp)) {
-            IconTile(icon = Icons.Default.Bluetooth, tint = AccentGreen)
+        Box(modifier = Modifier.background(SynqviaTheme.colors.bgTop).padding(16.dp)) {
+            IconTile(icon = Icons.Default.Bluetooth, tint = SynqviaTheme.colors.green)
         }
     }
 }
 
-@Preview(name = "Circle Icon Button Preview", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewCircleIconButton() {
     SynqviaTheme {
-        Box(modifier = Modifier.background(BgTop).padding(16.dp)) {
+        Box(modifier = Modifier.background(SynqviaTheme.colors.bgTop).padding(16.dp)) {
             CircleIconButton(icon = Icons.AutoMirrored.Filled.ArrowBack, onClick = {})
         }
     }
 }
 
-@Preview(name = "Primary Button Preview", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewPrimaryButton() {
     SynqviaTheme {
-        Box(modifier = Modifier.background(BgTop).padding(16.dp)) {
+        Box(modifier = Modifier.background(SynqviaTheme.colors.bgTop).padding(16.dp)) {
             PrimaryButton(text = "Sync Now", icon = Icons.Default.Sync, onClick = {})
         }
     }
 }
 
-@Preview(name = "Outlined Cyan Button Preview", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewOutlinedCyanButton() {
     SynqviaTheme {
-        Box(modifier = Modifier.background(BgTop).padding(16.dp)) {
-            OutlinedCyanButton(text = "Send Test", onClick = {})
+        Box(modifier = Modifier.background(SynqviaTheme.colors.bgTop).padding(16.dp)) {
+            OutlinedPrimaryButton(text = "Send Test", onClick = {})
         }
     }
 }
 
-@Preview(name = "Small Cyan Button Preview", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewSmallCyanButton() {
     SynqviaTheme {
-        Box(modifier = Modifier.background(BgTop).padding(16.dp)) {
-            SmallCyanButton(text = "Open", onClick = {})
+        Box(modifier = Modifier.background(SynqviaTheme.colors.bgTop).padding(16.dp)) {
+            TonalButton(text = "Open", onClick = {})
         }
     }
 }
 
-@Preview(name = "Source Pills Preview", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewSourcePill() {
     SynqviaTheme {
-        Box(modifier = Modifier.background(BgTop).padding(16.dp)) {
+        Box(modifier = Modifier.background(SynqviaTheme.colors.bgTop).padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SourcePill(isFromPc = true)
                 SourcePill(isFromPc = false)
@@ -1104,11 +1238,11 @@ fun PreviewSourcePill() {
     }
 }
 
-@Preview(name = "Status Dots Preview", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewStatusDot() {
     SynqviaTheme {
-        Box(modifier = Modifier.background(BgTop).padding(16.dp)) {
+        Box(modifier = Modifier.background(SynqviaTheme.colors.bgTop).padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatusDot(state = SynqviaStatusState.CONNECTED)
                 StatusDot(state = SynqviaStatusState.CONNECTING)
@@ -1118,11 +1252,11 @@ fun PreviewStatusDot() {
     }
 }
 
-@Preview(name = "Section Header Preview", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewSectionHeader() {
     SynqviaTheme {
-        Box(modifier = Modifier.background(BgTop).padding(16.dp)) {
+        Box(modifier = Modifier.background(SynqviaTheme.colors.bgTop).padding(16.dp)) {
             SectionHeader(
                 icon = Icons.Default.Sync,
                 title = "Recent Activity",
@@ -1133,24 +1267,25 @@ fun PreviewSectionHeader() {
     }
 }
 
-@Preview(name = "Top Bar Preview", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewSynqviaTopBar() {
     SynqviaTheme {
-        Box(modifier = Modifier.background(BgTop)) {
+        Box(modifier = Modifier.background(SynqviaTheme.colors.bgTop)) {
             SynqviaTopBar(
-                title = "Clipboard History",
+                title = "History",
                 onBack = {}
             )
         }
     }
 }
 
-@Preview(name = "Setting Rows Preview", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewRows() {
+    val colors = SynqviaTheme.colors
     SynqviaTheme {
-        Box(modifier = Modifier.background(BgTop).padding(16.dp)) {
+        Box(modifier = Modifier.background(colors.bgTop).padding(16.dp)) {
             SynqviaCard {
                 SettingToggleRow(
                     title = "Auto Sync",
@@ -1168,7 +1303,7 @@ fun PreviewRows() {
                     title = "Bluetooth Permissions",
                     subtitle = "Required to connect to Linux PC",
                     value = "Active",
-                    valueColor = AccentGreen,
+                    valueColor = colors.green,
                     onClick = {}
                 )
             }
@@ -1176,13 +1311,4 @@ fun PreviewRows() {
     }
 }
 
-@Preview(name = "Synqvia Logo Mark Preview", showBackground = true)
-@Composable
-fun PreviewSynqviaLogoMark() {
-    SynqviaTheme {
-        Box(modifier = Modifier.background(BgTop).padding(16.dp)) {
-            SynqviaLogoMark()
-        }
-    }
-}
 

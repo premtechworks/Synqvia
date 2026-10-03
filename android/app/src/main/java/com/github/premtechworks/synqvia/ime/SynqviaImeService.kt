@@ -59,15 +59,25 @@ class SynqviaImeService : InputMethodService() {
         clipboardCaptureManager = container.clipboardCaptureManager
         clipRepository = container.clipRepository
         syncPreferences = container.syncPreferences
+
+        serviceScope.launch {
+            syncPreferences.themeModeFlow.collect {
+                window?.window?.let { win -> applyWindowNavBar(win) }
+                if (isInputViewShown) {
+                    setInputView(onCreateInputView())
+                }
+            }
+        }
     }
 
     fun applyWindowNavBar(win: android.view.Window) {
-        val navColor = ContextCompat.getColor(this, R.color.ime_background)
-        win.navigationBarColor = navColor
+        val themeMode = try { syncPreferences.themeMode } catch (_: Exception) { "system" }
+        val palette = KeyboardPalette.resolve(this, themeMode)
+        win.navigationBarColor = palette.keyboardBg
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             win.isNavigationBarContrastEnforced = false
         }
-        WindowCompat.getInsetsController(win, win.decorView).isAppearanceLightNavigationBars = false
+        WindowCompat.getInsetsController(win, win.decorView).isAppearanceLightNavigationBars = !palette.isDark
     }
 
     override fun onConfigureWindow(win: android.view.Window, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
@@ -80,16 +90,26 @@ class SynqviaImeService : InputMethodService() {
         window?.window?.let { applyWindowNavBar(it) }
     }
 
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        window?.window?.let { applyWindowNavBar(it) }
+        val themeMode = try { syncPreferences.themeMode } catch (_: Exception) { "system" }
+        if (themeMode == "system") {
+            setInputView(onCreateInputView())
+        }
+    }
+
     override fun onCreateInputView(): View {
-        val kbView = SynqviaKeyboardView(this)
+        val themeMode = try { syncPreferences.themeMode } catch (_: Exception) { "system" }
+        val palette = KeyboardPalette.resolve(this, themeMode)
+        val themedContext = ContextThemeWrapper(this, palette.themeResId)
+        val kbView = SynqviaKeyboardView(themedContext)
         keyboardView = kbView
 
         window?.window?.let { applyWindowNavBar(it) }
 
         ViewCompat.setOnApplyWindowInsetsListener(kbView) { view, windowInsets ->
             val navBarInsets = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars())
-            val systemBarsInsets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            android.util.Log.d("SynqviaIME", "systemBars().bottom=${systemBarsInsets.bottom}, navBars=${navBarInsets.bottom}")
             view.setPadding(
                 view.paddingLeft,
                 view.paddingTop,
@@ -99,7 +119,8 @@ class SynqviaImeService : InputMethodService() {
             windowInsets
         }
 
-        val clipboardView = layoutInflater.inflate(
+        val themedInflater = android.view.LayoutInflater.from(themedContext)
+        val clipboardView = themedInflater.inflate(
             R.layout.ime_clipboard_view,
             kbView.layoutClipboardContainer,
             true

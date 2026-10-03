@@ -3,41 +3,44 @@
     android:id="@+id/layout_ime_root"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@color/ime_background"
+    android:background="?attr/synqKbBg"
     android:orientation="vertical">
 
-    <!-- 44dp Toolbar (bg #0B1426) -->
+    <!-- 44dp Toolbar -->
     <LinearLayout
         android:id="@+id/layout_ime_toolbar"
         android:layout_width="match_parent"
         android:layout_height="44dp"
-        android:background="@color/ime_toolbar_background"
+        android:background="?attr/synqToolbarBg"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="12dp"
         android:paddingEnd="12dp">
 
-        <!-- Left: Logo mark 22dp + "Synqvia" 15sp SemiBold white, 8dp gap -->
+        <!-- Left: Brand mark 22dp + Brand wordmark 14dp tall, 8dp gap -->
         <ImageView
             android:id="@+id/iv_ime_logo"
             android:layout_width="22dp"
             android:layout_height="22dp"
             android:adjustViewBounds="true"
             android:scaleType="fitCenter"
-            android:contentDescription="Synqvia Logo"
-            android:src="@drawable/ic_synqvia_logo_mark" />
+            android:contentDescription="Synqvia"
+            android:src="?attr/synqBrandMark" />
 
-        <TextView
-            android:id="@+id/tv_ime_brand"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
+        <ImageView
+            android:id="@+id/iv_ime_wordmark"
+            android:layout_width="wrap_content"
+            android:layout_height="14dp"
             android:layout_marginStart="8dp"
-            android:layout_weight="1"
-            android:text="Synqvia"
-            android:textColor="@color/white"
-            android:textSize="15sp"
-            android:fontFamily="@font/inter_variable"
-            android:fontVariationSettings="'wght' 600, 'opsz' 15" />
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            android:contentDescription="Synqvia"
+            android:src="?attr/synqBrandWordmark" />
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
 
         <!-- Right: 3 Toolbar Action Buttons (40x40dp, 10dp radius, 4dp gap, 22dp icon) -->
         <ImageButton
@@ -78,7 +81,7 @@
         android:id="@+id/divider_ime_toolbar"
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="@color/ime_divider" />
+        android:background="?attr/synqDivider" />
 
     <!-- Content Area (wrap_content computed height) -->
     <FrameLayout

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Synqvia Keyboard (IME) Semantic Attributes -->
+    <attr name="synqKbBg" format="color|reference" />
+    <attr name="synqKeyBg" format="color|reference" />
+    <attr name="synqKeyPressed" format="color|reference" />
+    <attr name="synqKeyFunction" format="color|reference" />
+    <attr name="synqKeyText" format="color|reference" />
+    <attr name="synqKeyHint" format="color|reference" />
+    <attr name="synqEnterBg" format="color|reference" />
+    <attr name="synqEnterIcon" format="color|reference" />
+    <attr name="synqToolbarBg" format="color|reference" />
+    <attr name="synqToolbarIconInactive" format="color|reference" />
+    <attr name="synqToolbarActiveBg" format="color|reference" />
+    <attr name="synqToolbarActiveIcon" format="color|reference" />
+    <attr name="synqDivider" format="color|reference" />
+    <attr name="synqCardBg" format="color|reference" />
+    <attr name="synqPanelBg" format="color|reference" />
+    <attr name="synqOutline" format="color|reference" />
+    <attr name="synqTextSecondary" format="color|reference" />
+    <attr name="synqTextTertiary" format="color|reference" />
+    <attr name="synqPillFromPcBg" format="color|reference" />
+    <attr name="synqPillFromPcFg" format="color|reference" />
+    <attr name="synqPillToPcBg" format="color|reference" />
+    <attr name="synqPillToPcFg" format="color|reference" />
+    <attr name="synqPinGold" format="color|reference" />
+    <attr name="synqKeyShadow" format="color|reference" />
+    <attr name="synqBrandMark" format="reference" />
+    <attr name="synqBrandWordmark" format="reference" />
+</resources>

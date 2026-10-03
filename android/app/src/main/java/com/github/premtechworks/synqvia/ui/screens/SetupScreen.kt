@@ -42,6 +42,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
@@ -88,16 +89,11 @@ import androidx.core.content.PermissionChecker
 import com.github.premtechworks.synqvia.service.ClipAccessService
 import com.github.premtechworks.synqvia.ui.MainViewModel
 import com.github.premtechworks.synqvia.ui.components.IconTile
-import com.github.premtechworks.synqvia.ui.components.SmallCyanButton
+import com.github.premtechworks.synqvia.ui.components.TonalButton
 import com.github.premtechworks.synqvia.ui.components.SynqviaCard
 import com.github.premtechworks.synqvia.ui.components.SynqviaScreen
-import com.github.premtechworks.synqvia.ui.theme.AccentAmber
-import com.github.premtechworks.synqvia.ui.theme.AccentGreen
-import com.github.premtechworks.synqvia.ui.theme.PrimaryCyan
 import com.github.premtechworks.synqvia.ui.theme.SynqviaTheme
 import com.github.premtechworks.synqvia.ui.theme.SynqviaType
-import com.github.premtechworks.synqvia.ui.theme.TextPrimary
-import com.github.premtechworks.synqvia.ui.theme.TextSecondary
 
 data class ImeSetupState(
     val isGranted: Boolean,
@@ -200,6 +196,7 @@ fun SetupScreen(
     }
 
     val haptics = LocalAppHaptics.current
+    var isInitialResumeCheck by rememberSaveable { mutableStateOf(true) }
     // Refresh states when returning from system settings or IME picker
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -226,15 +223,19 @@ fun SetupScreen(
                 isAccessibilityGranted = newAccess
                 isImeEnabled = newIme
 
-                val newlyGranted = (!wasBt && newBt) ||
-                        (!wasNotif && newNotif) ||
-                        (!wasBattery && newBattery) ||
-                        (!wasAccess && newAccess) ||
-                        (!wasIme && newIme) ||
-                        (!wasDefaultIme && newDefaultIme)
+                if (isInitialResumeCheck) {
+                    isInitialResumeCheck = false
+                } else {
+                    val newlyGranted = (!wasBt && newBt) ||
+                            (!wasNotif && newNotif) ||
+                            (!wasBattery && newBattery) ||
+                            (!wasAccess && newAccess) ||
+                            (!wasIme && newIme) ||
+                            (!wasDefaultIme && newDefaultIme)
 
-                if (newlyGranted) {
-                    haptics.confirm()
+                    if (newlyGranted) {
+                        haptics.confirm()
+                    }
                 }
             }
         }
@@ -360,11 +361,17 @@ fun SetupScreenContent(
     val haptics = LocalAppHaptics.current
 
     val isScrolled by remember { derivedStateOf { scrollState.value > 8 } }
+    val colors = SynqviaTheme.colors
+
+    var wasAllRequiredGranted by rememberSaveable {
+        mutableStateOf(completionState.isAllRequiredGranted)
+    }
 
     androidx.compose.runtime.LaunchedEffect(completionState.isAllRequiredGranted) {
-        if (completionState.isAllRequiredGranted) {
+        if (!wasAllRequiredGranted && completionState.isAllRequiredGranted) {
             haptics.confirm()
         }
+        wasAllRequiredGranted = completionState.isAllRequiredGranted
     }
 
     ScreenScaffold(
@@ -378,14 +385,14 @@ fun SetupScreenContent(
                 Icon(
                     imageVector = Icons.Default.Bolt,
                     contentDescription = null,
-                    tint = PrimaryCyan,
+                    tint = colors.primary,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Seamless Setup",
                     style = SynqviaType.LargeTitle,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
             }
         }
@@ -397,25 +404,21 @@ fun SetupScreenContent(
                 .fillMaxSize()
                 .testTag("setup_screen")
         ) {
-            Spacer(modifier = Modifier.height(6.dp))
-
             Text(
                 text = "Configure permissions to allow reliable Bluetooth sync even with Android 10-14 background clipboard limits.",
                 style = SynqviaType.Footnote,
-                color = TextSecondary
+                color = colors.textSecondary
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Section label: REQUIRED
             Text(
                 text = "REQUIRED",
                 style = SynqviaType.Overline,
-                color = TextSecondary,
-                modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+                color = colors.textTertiary,
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp)
             )
 
-            // B) Step Rows (10dp gaps)
+            // B) Step Rows (universal 12dp gaps from ScrollableColumn)
             // 1. Bluetooth Permissions
             SetupStepCard(
                 icon = Icons.Default.Bluetooth,
@@ -423,10 +426,10 @@ fun SetupScreenContent(
                 description = "Required to connect to your Linux PC via RFCOMM Classic socket.",
                 isGranted = btGranted,
                 actionLabel = "Grant",
-                onAction = onRequestBluetooth
+                onAction = onRequestBluetooth,
+                tileContainer = colors.tileBluetoothContainer,
+                tileContent = colors.tileBluetoothContent
             )
-
-            Spacer(modifier = Modifier.height(10.dp))
 
             // 2. Persistent Notification
             SetupStepCard(
@@ -435,10 +438,10 @@ fun SetupScreenContent(
                 description = "Shows real-time connection status and quick 'Sync to PC' action.",
                 isGranted = notificationGranted,
                 actionLabel = "Grant",
-                onAction = onRequestNotification
+                onAction = onRequestNotification,
+                tileContainer = colors.tileNotificationContainer,
+                tileContent = colors.tileNotificationContent
             )
-
-            Spacer(modifier = Modifier.height(10.dp))
 
             // 3. Unrestricted Battery
             SetupStepCard(
@@ -447,17 +450,17 @@ fun SetupScreenContent(
                 description = "Prevents OEM aggressive battery managers from killing the background sync daemon.",
                 isGranted = batteryGranted,
                 actionLabel = "Grant",
-                onAction = onRequestBattery
+                onAction = onRequestBattery,
+                tileContainer = colors.tileBatteryContainer,
+                tileContent = colors.tileBatteryContent
             )
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             // Section label: OPTIONAL
             Text(
                 text = "OPTIONAL",
                 style = SynqviaType.Overline,
-                color = TextSecondary,
-                modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
+                color = colors.textTertiary,
+                modifier = Modifier.padding(start = 4.dp, top = 8.dp)
             )
 
             // 4. Accessibility Selection Cache
@@ -467,10 +470,10 @@ fun SetupScreenContent(
                 description = "Overcomes Android 10+ background clipboard blocking by grabbing text selections as you copy.",
                 isGranted = accessibilityGranted,
                 actionLabel = "Open",
-                onAction = onRequestAccessibility
+                onAction = onRequestAccessibility,
+                tileContainer = colors.tileAccessibilityContainer,
+                tileContent = colors.tileAccessibilityContent
             )
-
-            Spacer(modifier = Modifier.height(10.dp))
 
             // 5. Clipboard Keyboard (IME)
             SetupStepCard(
@@ -480,12 +483,12 @@ fun SetupScreenContent(
                 isGranted = imeState.isGranted,
                 actionLabel = imeState.actionLabel,
                 onAction = onRequestIme,
-                onCardClick = onOpenImeSettings
+                onCardClick = onOpenImeSettings,
+                tileContainer = colors.tileKeyboardContainer,
+                tileContent = colors.tileKeyboardContent
             )
 
-            // C) Completion Banner (12dp below the last card)
-            Spacer(modifier = Modifier.height(12.dp))
-
+            // C) Completion Banner
             SetupCompletionBanner(completionState = completionState)
         }
     }
@@ -500,12 +503,20 @@ private fun SetupStepCard(
     actionLabel: String,
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
+    tileContainer: Color = SynqviaTheme.colors.tileBluetoothContainer,
+    tileContent: Color = SynqviaTheme.colors.tileBluetoothContent,
     onCardClick: (() -> Unit)? = null
 ) {
+    val colors = SynqviaTheme.colors
     val iconTint by animateColorAsState(
-        targetValue = if (isGranted) AccentGreen else PrimaryCyan,
+        targetValue = if (isGranted) tileContent else if (colors.isDark) colors.primary else tileContent,
         animationSpec = tween(300),
         label = "setup_icon_tint"
+    )
+    val tileBg by animateColorAsState(
+        targetValue = if (isGranted) tileContainer else if (colors.isDark) colors.primary.copy(alpha = 0.14f) else tileContainer,
+        animationSpec = tween(300),
+        label = "setup_tile_bg"
     )
     val haptics = LocalAppHaptics.current
 
@@ -530,6 +541,8 @@ private fun SetupStepCard(
             IconTile(
                 icon = icon,
                 tint = iconTint,
+                containerColor = tileBg,
+                contentColor = iconTint,
                 size = 44.dp,
                 iconSize = 22.dp
             )
@@ -542,13 +555,13 @@ private fun SetupStepCard(
                 Text(
                     text = title,
                     style = SynqviaType.Headline,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
                 Spacer(modifier = Modifier.height(3.dp))
                 Text(
                     text = description,
                     style = SynqviaType.Caption,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
 
@@ -566,18 +579,18 @@ private fun SetupStepCard(
                         Text(
                             text = "Active",
                             style = SynqviaType.CaptionSemiBold,
-                            color = AccentGreen
+                            color = colors.greenText
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = Icons.Default.ChevronRight,
                             contentDescription = null,
-                            tint = AccentGreen.copy(alpha = 0.6f),
+                            tint = if (colors.isDark) colors.green.copy(alpha = 0.6f) else colors.textTertiary,
                             modifier = Modifier.size(16.dp)
                         )
                     }
                 } else {
-                    SmallCyanButton(
+                    TonalButton(
                         text = actionLabel,
                         onClick = onAction
                     )
@@ -594,6 +607,7 @@ private fun SetupCompletionBanner(
 ) {
     val isSuccess = completionState.isAllRequiredGranted
     val reduceMotion = LocalReduceMotion.current
+    val colors = SynqviaTheme.colors
 
     AnimatedContent(
         targetState = isSuccess,
@@ -612,7 +626,22 @@ private fun SetupCompletionBanner(
         label = "completion_banner_transition",
         modifier = modifier
     ) { success ->
-        val accent = if (success) AccentGreen else AccentAmber
+        val bannerBg = if (colors.isDark) {
+            (if (success) colors.green else colors.amber).copy(alpha = 0.12f)
+        } else {
+            if (success) colors.greenContainer else colors.amberContainer
+        }
+        val bannerBorder = if (colors.isDark) {
+            (if (success) colors.green else colors.amber).copy(alpha = 0.35f)
+        } else {
+            if (success) colors.greenBannerBorder else colors.amber.copy(alpha = 0.40f)
+        }
+        val circleBg = if (colors.isDark) {
+            if (success) colors.green else colors.amber
+        } else {
+            if (success) Color(0xFF22B35E) else colors.amber
+        }
+
         val checkProgress = remember { Animatable(if (success && !reduceMotion) 0f else 1f) }
 
         LaunchedEffect(success) {
@@ -633,8 +662,8 @@ private fun SetupCompletionBanner(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(accent.copy(alpha = 0.12f))
-                .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+                .background(bannerBg)
+                .border(1.dp, bannerBorder, RoundedCornerShape(16.dp))
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -642,7 +671,7 @@ private fun SetupCompletionBanner(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(accent),
+                    .background(circleBg),
                 contentAlignment = Alignment.Center
             ) {
                 if (success) {
@@ -685,13 +714,13 @@ private fun SetupCompletionBanner(
                 Text(
                     text = completionState.title,
                     style = SynqviaType.Headline,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = completionState.subtitle,
                     style = SynqviaType.Caption,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
             }
         }

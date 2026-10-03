@@ -79,6 +79,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import com.github.premtechworks.synqvia.ui.util.TabLatencyTracker
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -99,7 +101,8 @@ import com.github.premtechworks.synqvia.ui.MainTab
 import com.github.premtechworks.synqvia.ui.MainViewModel
 import com.github.premtechworks.synqvia.ui.components.ClipDetailOverlay
 import com.github.premtechworks.synqvia.ui.components.LocalBottomBarHeight
-import com.github.premtechworks.synqvia.ui.components.SynqviaLogo
+import androidx.compose.runtime.DisposableEffect
+import com.github.premtechworks.synqvia.ui.components.SynqviaMark
 import com.github.premtechworks.synqvia.ui.isBlurSupported
 import com.github.premtechworks.synqvia.ui.motion.DecelerateEasing
 import com.github.premtechworks.synqvia.ui.motion.LocalAppHaptics
@@ -114,17 +117,14 @@ import com.github.premtechworks.synqvia.ui.screens.SettingsScreen
 import com.github.premtechworks.synqvia.ui.screens.SetupScreen
 import com.github.premtechworks.synqvia.ui.CardGlassStyle
 import com.github.premtechworks.synqvia.ui.GlassCardBorderBrush
+import com.github.premtechworks.synqvia.ui.rememberBottomBarGlassStyle
+import com.github.premtechworks.synqvia.ui.rememberCardGlassStyle
+import com.github.premtechworks.synqvia.ui.rememberGlassCardBorderBrush
 import com.github.premtechworks.synqvia.ui.synqviaGlass
-import com.github.premtechworks.synqvia.ui.theme.BgBottom
-import com.github.premtechworks.synqvia.ui.theme.BgTop
-import com.github.premtechworks.synqvia.ui.theme.DividerDark
-import com.github.premtechworks.synqvia.ui.theme.PrimaryCyan
-import com.github.premtechworks.synqvia.ui.theme.SurfaceHigh
-import com.github.premtechworks.synqvia.ui.theme.SurfaceInset
+import com.github.premtechworks.synqvia.ui.components.SynqviaLightDarkPreview
 import com.github.premtechworks.synqvia.ui.theme.SynqviaTheme
 import com.github.premtechworks.synqvia.ui.theme.SynqviaType
-import com.github.premtechworks.synqvia.ui.theme.TextPrimary
-import com.github.premtechworks.synqvia.ui.theme.TextSecondary
+import com.github.premtechworks.synqvia.ui.theme.synqviaCardShadow
 import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.rememberCoroutineScope
@@ -153,50 +153,53 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
+        var isReady = false
+        val startTime = android.os.SystemClock.uptimeMillis()
+        splashScreen.setKeepOnScreenCondition {
+            !isReady && (android.os.SystemClock.uptimeMillis() - startTime < 500L)
+        }
         splashScreen.setOnExitAnimationListener { splashScreenViewProvider ->
-            val iconView = splashScreenViewProvider.iconView
             val splashView = splashScreenViewProvider.view
             if (isSystemReduceMotionEnabled(this)) {
                 splashScreenViewProvider.remove()
             } else {
                 val alpha = android.animation.ObjectAnimator.ofFloat(splashView, android.view.View.ALPHA, 1f, 0f).apply {
-                    duration = 240L
+                    duration = 150L
                     interpolator = android.view.animation.AccelerateDecelerateInterpolator()
                 }
-                val scaleX = android.animation.ObjectAnimator.ofFloat(iconView, android.view.View.SCALE_X, 1f, 1.12f).apply {
-                    duration = 240L
-                }
-                val scaleY = android.animation.ObjectAnimator.ofFloat(iconView, android.view.View.SCALE_Y, 1f, 1.12f).apply {
-                    duration = 240L
-                }
-                android.animation.AnimatorSet().apply {
-                    playTogether(alpha, scaleX, scaleY)
-                    addListener(object : android.animation.AnimatorListenerAdapter() {
-                        override fun onAnimationEnd(animation: android.animation.Animator) {
-                            splashScreenViewProvider.remove()
-                        }
-                    })
-                    start()
-                }
+                alpha.addListener(object : android.animation.AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: android.animation.Animator) {
+                        splashScreenViewProvider.remove()
+                    }
+                })
+                alpha.start()
             }
         }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+            statusBarStyle = SystemBarStyle.auto(
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
+            ),
+            navigationBarStyle = SystemBarStyle.auto(
+                android.graphics.Color.TRANSPARENT,
+                android.graphics.Color.TRANSPARENT
+            )
         )
 
         requestInitialPermissions()
 
         setContent {
             val themeMode by viewModel.themeMode.collectAsState()
-            val dynamicColor by viewModel.dynamicColor.collectAsState()
             val currentRoute by viewModel.currentRoute.collectAsState()
 
             SynqviaTheme(
-                themeMode = themeMode,
-                dynamicColor = dynamicColor
+                themeMode = themeMode
             ) {
+                DisposableEffect(Unit) {
+                    isReady = true
+                    onDispose {}
+                }
                 AnimatedContent(
                     targetState = currentRoute,
                     transitionSpec = { fadeIn() togetherWith fadeOut() },
@@ -332,8 +335,8 @@ fun MainAppContent(viewModel: MainViewModel) {
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            BgTop,
-                            BgBottom
+                            SynqviaTheme.colors.bgTop,
+                            SynqviaTheme.colors.bgBottom
                         )
                     )
                 )
@@ -352,16 +355,17 @@ fun MainAppContent(viewModel: MainViewModel) {
                         modifier = Modifier.fillMaxSize()
                     ) {
                         NavigationRail(
-                            containerColor = SurfaceInset,
-                            contentColor = Color.White,
+                            containerColor = SynqviaTheme.colors.surfaceInset,
+                            contentColor = SynqviaTheme.colors.textPrimary,
                             modifier = Modifier
-                                .border(1.dp, DividerDark, RoundedCornerShape(0.dp))
+                                .border(1.dp, SynqviaTheme.colors.divider, RoundedCornerShape(0.dp))
                                 .testTag("navigation_rail")
                         ) {
                             Spacer(modifier = Modifier.height(16.dp))
-                            SynqviaLogo(
+                            SynqviaMark(
+                                size = 32.dp,
+                                contentDescription = "Synqvia",
                                 modifier = Modifier
-                                    .height(28.dp)
                                     .padding(horizontal = 8.dp)
                             )
                             Spacer(modifier = Modifier.height(24.dp))
@@ -371,7 +375,10 @@ fun MainAppContent(viewModel: MainViewModel) {
                                 outlinedIcon = Icons.Outlined.Home,
                                 filledIcon = Icons.Filled.Home,
                                 label = "Sync",
-                                onClick = { viewModel.setTab(MainTab.SYNC) },
+                                onClick = {
+                                    TabLatencyTracker.onTabClicked(MainTab.SYNC)
+                                    viewModel.setTab(MainTab.SYNC)
+                                },
                                 testTag = "rail_tab_sync"
                             )
                             NavRailTabItem(
@@ -379,7 +386,10 @@ fun MainAppContent(viewModel: MainViewModel) {
                                 outlinedIcon = Icons.Outlined.History,
                                 filledIcon = Icons.Filled.History,
                                 label = "History",
-                                onClick = { viewModel.setTab(MainTab.HISTORY) },
+                                onClick = {
+                                    TabLatencyTracker.onTabClicked(MainTab.HISTORY)
+                                    viewModel.setTab(MainTab.HISTORY)
+                                },
                                 testTag = "rail_tab_history"
                             )
                             NavRailTabItem(
@@ -387,7 +397,10 @@ fun MainAppContent(viewModel: MainViewModel) {
                                 outlinedIcon = Icons.Outlined.Bolt,
                                 filledIcon = Icons.Filled.Bolt,
                                 label = "Setup",
-                                onClick = { viewModel.setTab(MainTab.SETUP) },
+                                onClick = {
+                                    TabLatencyTracker.onTabClicked(MainTab.SETUP)
+                                    viewModel.setTab(MainTab.SETUP)
+                                },
                                 testTag = "rail_tab_setup"
                             )
                             NavRailTabItem(
@@ -395,7 +408,10 @@ fun MainAppContent(viewModel: MainViewModel) {
                                 outlinedIcon = Icons.Outlined.Settings,
                                 filledIcon = Icons.Filled.Settings,
                                 label = "Settings",
-                                onClick = { viewModel.setTab(MainTab.SETTINGS) },
+                                onClick = {
+                                    TabLatencyTracker.onTabClicked(MainTab.SETTINGS)
+                                    viewModel.setTab(MainTab.SETTINGS)
+                                },
                                 testTag = "rail_tab_settings"
                             )
                         }
@@ -448,16 +464,35 @@ fun MainAppContent(viewModel: MainViewModel) {
                                 .padding(bottom = if (measuredBottomBarHeight > 0.dp) measuredBottomBarHeight + 8.dp else 16.dp)
                                 .padding(horizontal = 16.dp),
                             snackbar = { data ->
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(14.dp))
+                                val cardGlassStyle = rememberCardGlassStyle()
+                                val borderBrush = rememberGlassCardBorderBrush()
+                                val colors = SynqviaTheme.colors
+                                val isDark = SynqviaTheme.isDark
+                                val snackbarShape = RoundedCornerShape(14.dp)
+
+                                val snackbarModifier = if (isDark) {
+                                    Modifier
+                                        .clip(snackbarShape)
                                         .synqviaGlass(
                                             hazeState = hazeState,
-                                            style = CardGlassStyle,
+                                            style = cardGlassStyle,
                                             isBlurSupported = isBlurSupported,
-                                            fallbackColor = SurfaceHigh
+                                            fallbackColor = colors.surfaceHigh
                                         )
-                                        .border(1.dp, GlassCardBorderBrush, RoundedCornerShape(14.dp))
+                                        .border(1.dp, borderBrush, snackbarShape)
+                                } else {
+                                    Modifier
+                                        .synqviaCardShadow(elevation = 6.dp, shape = snackbarShape)
+                                        .clip(snackbarShape)
+                                        .background(Color(0xFF0B1B33).copy(alpha = 0.92f))
+                                        .border(1.dp, Color(0xFF0B1B33).copy(alpha = 0.12f), snackbarShape)
+                                }
+
+                                val textColor = if (isDark) colors.textPrimary else Color.White
+                                val actionColor = if (isDark) colors.primary else Color(0xFF9CC4FF)
+
+                                Box(
+                                    modifier = snackbarModifier
                                         .padding(horizontal = 16.dp, vertical = 12.dp)
                                 ) {
                                     Row(
@@ -468,12 +503,12 @@ fun MainAppContent(viewModel: MainViewModel) {
                                         Text(
                                             text = data.visuals.message,
                                             style = SynqviaType.Body,
-                                            color = TextPrimary
+                                            color = textColor
                                         )
                                         data.visuals.actionLabel?.let { actionLabel ->
                                             Text(
                                                 text = actionLabel,
-                                                style = SynqviaType.Headline.copy(color = PrimaryCyan),
+                                                style = SynqviaType.Headline.copy(color = actionColor),
                                                 modifier = Modifier
                                                     .clickable { data.performAction() }
                                                     .padding(start = 12.dp, top = 4.dp, bottom = 4.dp)
@@ -525,10 +560,11 @@ private fun TabContent(
     AnimatedContent(
         targetState = selectedTab,
         transitionSpec = {
+            val direction = if (targetState.ordinal > initialState.ordinal) 1 else -1
             if (reduceMotion) {
-                fadeIn(animationSpec = tween(120)) togetherWith fadeOut(animationSpec = tween(120))
+                (fadeIn(animationSpec = tween(120)) togetherWith fadeOut(animationSpec = tween(120)))
+                    .apply { targetContentZIndex = 1f }
             } else {
-                val direction = if (targetState.ordinal > initialState.ordinal) 1 else -1
                 val enter = slideInHorizontally(
                     animationSpec = tween(durationMillis = 220, easing = DecelerateEasing)
                 ) { slideOffsetPx * direction } + fadeIn(
@@ -539,36 +575,46 @@ private fun TabContent(
                 ) { -slideOffsetPx * direction } + fadeOut(
                     animationSpec = tween(durationMillis = 140, easing = DecelerateEasing)
                 )
-                enter togetherWith exit
+                (enter togetherWith exit).apply { targetContentZIndex = 1f }
             }
         },
-        label = "tabTransition",
+        label = "tab_content_transition",
         modifier = modifier
-    ) { tab ->
-        when (tab) {
-            MainTab.SYNC -> DashboardScreen(
-                viewModel = viewModel,
-                onNavigateTab = { viewModel.setTab(it) },
-                onOpenPair = { viewModel.navigateTo(AppRoutes.PAIR) },
-                scrollState = dashboardScrollState
-            )
-            MainTab.HISTORY -> HistoryScreen(
-                viewModel = viewModel,
-                lazyListState = historyListState,
-                onNavigateTab = { viewModel.setTab(it) }
-            )
-            MainTab.SETUP -> SetupScreen(
-                viewModel = viewModel,
-                scrollState = setupScrollState,
-                onOpenImeSettings = { viewModel.navigateTo(AppRoutes.IME_SETTINGS) }
-            )
-            MainTab.SETTINGS -> SettingsScreen(
-                viewModel = viewModel,
-                scrollState = settingsScrollState
-            )
+    ) { currentTab ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawWithContent {
+                    drawContent()
+                    TabLatencyTracker.onTabDrawn(currentTab)
+                }
+        ) {
+            when (currentTab) {
+                MainTab.SYNC -> DashboardScreen(
+                    viewModel = viewModel,
+                    onNavigateTab = { viewModel.setTab(it) },
+                    onOpenPair = { viewModel.navigateTo(AppRoutes.PAIR) },
+                    scrollState = dashboardScrollState
+                )
+                MainTab.HISTORY -> HistoryScreen(
+                    viewModel = viewModel,
+                    lazyListState = historyListState,
+                    onNavigateTab = { viewModel.setTab(it) }
+                )
+                MainTab.SETUP -> SetupScreen(
+                    viewModel = viewModel,
+                    scrollState = setupScrollState,
+                    onOpenImeSettings = { viewModel.navigateTo(AppRoutes.IME_SETTINGS) }
+                )
+                MainTab.SETTINGS -> SettingsScreen(
+                    viewModel = viewModel,
+                    scrollState = settingsScrollState
+                )
+            }
         }
     }
 }
+
 
 /**
  * Bottom navigation bar with real frosted glass material (blur 24dp, tint #0B1426 @ 72%),
@@ -585,11 +631,13 @@ fun SynqviaBottomNavBar(
     val reduceMotion = LocalReduceMotion.current
     val haptics = LocalAppHaptics.current
 
+    val colors = SynqviaTheme.colors
+
     val navBarGlassModifier = Modifier.synqviaGlass(
         hazeState = hazeState,
-        style = BottomBarGlassStyle,
+        style = rememberBottomBarGlassStyle(),
         isBlurSupported = isBlurSupported,
-        fallbackColor = Color(0xFF0B1426)
+        fallbackColor = colors.navBarBg
     )
 
     Column(
@@ -598,12 +646,12 @@ fun SynqviaBottomNavBar(
             .then(navBarGlassModifier)
             .windowInsetsPadding(WindowInsets.navigationBars)
     ) {
-        // 0.5dp top hairline (white 10%)
+        // Top hairline: 0.5dp white 10% in dark, 1dp #E1E9F5 in light
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(0.5.dp)
-                .background(Color.White.copy(alpha = 0.10f))
+                .height(if (SynqviaTheme.isDark) 0.5.dp else 1.dp)
+                .background(if (SynqviaTheme.isDark) Color.White.copy(alpha = 0.10f) else colors.outline)
         )
         BoxWithConstraints(
             modifier = Modifier
@@ -643,7 +691,7 @@ fun SynqviaBottomNavBar(
                         translationX = pillTranslationX.value
                     }
                     .clip(RoundedCornerShape(12.dp))
-                    .background(PrimaryCyan.copy(alpha = 0.14f))
+                    .background(colors.navPillBg)
             )
 
             Row(
@@ -656,8 +704,11 @@ fun SynqviaBottomNavBar(
                     filledIcon = Icons.Filled.Home,
                     label = "Sync",
                     onClick = {
-                        haptics.tick()
-                        onTabSelected(MainTab.SYNC)
+                        if (selectedTab != MainTab.SYNC) {
+                            haptics.tick()
+                            TabLatencyTracker.onTabClicked(MainTab.SYNC)
+                            onTabSelected(MainTab.SYNC)
+                        }
                     },
                     testTag = "nav_tab_sync",
                     modifier = Modifier.weight(1f)
@@ -668,8 +719,11 @@ fun SynqviaBottomNavBar(
                     filledIcon = Icons.Filled.History,
                     label = "History",
                     onClick = {
-                        haptics.tick()
-                        onTabSelected(MainTab.HISTORY)
+                        if (selectedTab != MainTab.HISTORY) {
+                            haptics.tick()
+                            TabLatencyTracker.onTabClicked(MainTab.HISTORY)
+                            onTabSelected(MainTab.HISTORY)
+                        }
                     },
                     testTag = "nav_tab_history",
                     modifier = Modifier.weight(1f)
@@ -680,8 +734,11 @@ fun SynqviaBottomNavBar(
                     filledIcon = Icons.Filled.Bolt,
                     label = "Setup",
                     onClick = {
-                        haptics.tick()
-                        onTabSelected(MainTab.SETUP)
+                        if (selectedTab != MainTab.SETUP) {
+                            haptics.tick()
+                            TabLatencyTracker.onTabClicked(MainTab.SETUP)
+                            onTabSelected(MainTab.SETUP)
+                        }
                     },
                     testTag = "nav_tab_setup",
                     modifier = Modifier.weight(1f)
@@ -692,8 +749,11 @@ fun SynqviaBottomNavBar(
                     filledIcon = Icons.Filled.Settings,
                     label = "Settings",
                     onClick = {
-                        haptics.tick()
-                        onTabSelected(MainTab.SETTINGS)
+                        if (selectedTab != MainTab.SETTINGS) {
+                            haptics.tick()
+                            TabLatencyTracker.onTabClicked(MainTab.SETTINGS)
+                            onTabSelected(MainTab.SETTINGS)
+                        }
                     },
                     testTag = "nav_tab_settings",
                     modifier = Modifier.weight(1f)
@@ -714,6 +774,7 @@ private fun NavBarTabItem(
     modifier: Modifier = Modifier
 ) {
     val reduceMotion = LocalReduceMotion.current
+    val colors = SynqviaTheme.colors
 
     // Outlined -> filled icon swap with a scale bounce (0.85 -> 1.12 -> 1)
     val iconScale = remember { Animatable(1f) }
@@ -733,13 +794,13 @@ private fun NavBarTabItem(
 
     // Label color crossfades over 150ms
     val labelColor by animateColorAsState(
-        targetValue = if (selected) PrimaryCyan else TextSecondary,
+        targetValue = if (selected) colors.primary else colors.textSecondary,
         animationSpec = tween(durationMillis = 150),
         label = "tab_label_color"
     )
 
     val iconColor by animateColorAsState(
-        targetValue = if (selected) PrimaryCyan else TextSecondary,
+        targetValue = if (selected) colors.primary else colors.textSecondary,
         animationSpec = tween(durationMillis = 150),
         label = "tab_icon_color"
     )
@@ -777,7 +838,7 @@ private fun NavBarTabItem(
             Spacer(modifier = Modifier.height(3.dp))
             Text(
                 text = label,
-                style = if (selected) SynqviaType.Overline else SynqviaType.Overline.copy(fontWeight = FontWeight.Medium),
+                style = if (selected) SynqviaType.Overline.copy(fontWeight = FontWeight.SemiBold) else SynqviaType.Overline.copy(fontWeight = FontWeight.Medium),
                 color = labelColor
             )
         }
@@ -795,6 +856,7 @@ private fun NavRailTabItem(
 ) {
     val haptics = LocalAppHaptics.current
     val reduceMotion = LocalReduceMotion.current
+    val colors = SynqviaTheme.colors
     val iconScale = remember { Animatable(1f) }
     LaunchedEffect(selected) {
         if (selected && !reduceMotion) {
@@ -809,8 +871,10 @@ private fun NavRailTabItem(
     NavigationRailItem(
         selected = selected,
         onClick = {
-            haptics.tick()
-            onClick()
+            if (!selected) {
+                haptics.tick()
+                onClick()
+            }
         },
         icon = {
             Icon(
@@ -825,15 +889,15 @@ private fun NavRailTabItem(
         label = {
             Text(
                 text = label,
-                style = if (selected) SynqviaType.Overline else SynqviaType.Overline.copy(fontWeight = FontWeight.Medium)
+                style = if (selected) SynqviaType.Overline.copy(fontWeight = FontWeight.SemiBold) else SynqviaType.Overline.copy(fontWeight = FontWeight.Medium)
             )
         },
         colors = NavigationRailItemDefaults.colors(
-            selectedIconColor = PrimaryCyan,
-            selectedTextColor = PrimaryCyan,
-            unselectedIconColor = TextSecondary,
-            unselectedTextColor = TextSecondary,
-            indicatorColor = PrimaryCyan.copy(alpha = 0.14f)
+            selectedIconColor = colors.primary,
+            selectedTextColor = colors.primary,
+            unselectedIconColor = colors.textSecondary,
+            unselectedTextColor = colors.textSecondary,
+            indicatorColor = colors.navPillBg
         ),
         modifier = Modifier
             .testTag(testTag)
@@ -841,7 +905,7 @@ private fun NavRailTabItem(
     )
 }
 
-@androidx.compose.ui.tooling.preview.Preview(name = "Bottom Nav Bar Preview", showBackground = true)
+@SynqviaLightDarkPreview
 @Composable
 fun PreviewSynqviaBottomNavBar() {
     SynqviaTheme {

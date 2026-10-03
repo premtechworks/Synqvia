@@ -1,12 +1,23 @@
 package com.github.premtechworks.synqvia.ui.screens
 
 import android.os.Build
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ScrollState
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.res.stringResource
+import com.github.premtechworks.synqvia.R
+import com.github.premtechworks.synqvia.ui.util.AppVersionHelper
 import com.github.premtechworks.synqvia.ui.motion.DecelerateEasing
 import com.github.premtechworks.synqvia.ui.motion.LocalAppHaptics
 import com.github.premtechworks.synqvia.ui.motion.LocalReduceMotion
@@ -40,8 +51,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Animation
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -49,6 +60,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
@@ -73,7 +85,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
@@ -87,23 +101,12 @@ import com.github.premtechworks.synqvia.ui.LogItem
 import com.github.premtechworks.synqvia.ui.MainViewModel
 import com.github.premtechworks.synqvia.ui.components.IconTile
 import com.github.premtechworks.synqvia.ui.components.OneTapPathsInfoCard
+import com.github.premtechworks.synqvia.ui.components.SettingsNavRow
 import com.github.premtechworks.synqvia.ui.components.SynqviaCard
 import com.github.premtechworks.synqvia.ui.components.SynqviaScreen
-import com.github.premtechworks.synqvia.ui.theme.AccentBlue
-import com.github.premtechworks.synqvia.ui.theme.AccentRed
-import com.github.premtechworks.synqvia.ui.theme.DividerDark
-import com.github.premtechworks.synqvia.ui.theme.OutlineDark
-import com.github.premtechworks.synqvia.ui.theme.PrimaryCyan
-import com.github.premtechworks.synqvia.ui.theme.StatusConnected
-import com.github.premtechworks.synqvia.ui.theme.StatusRetrying
-import com.github.premtechworks.synqvia.ui.theme.SurfaceDark
-import com.github.premtechworks.synqvia.ui.theme.SurfaceHigh
-import com.github.premtechworks.synqvia.ui.theme.SurfaceInset
+import androidx.compose.ui.res.vectorResource
 import com.github.premtechworks.synqvia.ui.theme.SynqviaTheme
 import com.github.premtechworks.synqvia.ui.theme.SynqviaType
-import com.github.premtechworks.synqvia.ui.theme.TextPrimary
-import com.github.premtechworks.synqvia.ui.theme.TextSecondary
-import com.github.premtechworks.synqvia.ui.theme.TextTertiary
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -165,53 +168,108 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     scrollState: ScrollState = rememberScrollState()
 ) {
-    val config by viewModel.config.collectAsState()
-    val logs by viewModel.diagnosticLogs.collectAsState()
+    var isContactSupportOpen by rememberSaveable { mutableStateOf(false) }
 
-    val autoSync by viewModel.autoSync.collectAsState()
-    val syncTextOnly by viewModel.syncTextOnly.collectAsState()
-    val clearOnDisconnect by viewModel.clearOnDisconnect.collectAsState()
-    val themeMode by viewModel.themeMode.collectAsState()
-    val dynamicColor by viewModel.dynamicColor.collectAsState()
-    val reduceMotionFollowSystem by viewModel.reduceMotionFollowSystem.collectAsState()
-    val hapticFeedback by viewModel.hapticFeedback.collectAsState()
+    LaunchedEffect(Unit) {
+        viewModel.settingsTabReselectTrigger.collect {
+            isContactSupportOpen = false
+        }
+    }
 
-    val clipboardManager = LocalClipboardManager.current
+    val reduceMotion = LocalReduceMotion.current
 
-    SettingsScreenContent(
-        config = config,
-        logs = logs,
-        autoSync = autoSync,
-        syncTextOnly = syncTextOnly,
-        clearOnDisconnect = clearOnDisconnect,
-        themeMode = themeMode,
-        dynamicColor = dynamicColor,
-        reduceMotionFollowSystem = reduceMotionFollowSystem,
-        hapticFeedback = hapticFeedback,
-        scrollState = scrollState,
-        onMacChange = { newMac -> viewModel.updateMac(newMac) },
-        onChannelChange = { newChannel -> viewModel.updateChannel(newChannel) },
-        onDeviceNameChange = { newName -> viewModel.updateDeviceName(newName) },
-        onHistoryCapChange = { newCap -> viewModel.updateHistoryCapacity(newCap) },
-        onAutoSyncChange = { viewModel.setAutoSync(it) },
-        onSyncTextOnlyChange = { viewModel.setSyncTextOnly(it) },
-        onClearOnDisconnectChange = { viewModel.setClearOnDisconnect(it) },
-        onThemeModeChange = { viewModel.setThemeMode(it) },
-        onDynamicColorChange = { viewModel.setDynamicColor(it) },
-        onReduceMotionFollowSystemChange = { viewModel.setReduceMotionFollowSystem(it) },
-        onHapticFeedbackChange = { viewModel.setHapticFeedback(it) },
-        onCopyMac = { mac ->
-            clipboardManager.setText(AnnotatedString(mac))
-            viewModel.showUserMessage("Copied")
+    AnimatedContent(
+        targetState = isContactSupportOpen,
+        transitionSpec = {
+            if (reduceMotion) {
+                (fadeIn(animationSpec = tween(120)) togetherWith fadeOut(animationSpec = tween(120)))
+                    .apply { targetContentZIndex = 1f }
+            } else {
+                if (targetState) {
+                    val enter = slideInHorizontally(
+                        animationSpec = tween(durationMillis = 220, easing = DecelerateEasing)
+                    ) { it } + fadeIn(
+                        animationSpec = tween(durationMillis = 220, easing = DecelerateEasing)
+                    )
+                    val exit = slideOutHorizontally(
+                        animationSpec = tween(durationMillis = 220, easing = DecelerateEasing)
+                    ) { -it / 3 } + fadeOut(
+                        animationSpec = tween(durationMillis = 140, easing = DecelerateEasing)
+                    )
+                    (enter togetherWith exit).apply { targetContentZIndex = 1f }
+                } else {
+                    val enter = slideInHorizontally(
+                        animationSpec = tween(durationMillis = 220, easing = DecelerateEasing)
+                    ) { -it / 3 } + fadeIn(
+                        animationSpec = tween(durationMillis = 220, easing = DecelerateEasing)
+                    )
+                    val exit = slideOutHorizontally(
+                        animationSpec = tween(durationMillis = 220, easing = DecelerateEasing)
+                    ) { it } + fadeOut(
+                        animationSpec = tween(durationMillis = 140, easing = DecelerateEasing)
+                    )
+                    (enter togetherWith exit).apply { targetContentZIndex = 1f }
+                }
+            }
         },
-        onCopyLogs = {
-            val fullLogText = logs.joinToString("\n") { "${it.formattedTime} [${it.level}] ${it.message}" }
-            clipboardManager.setText(AnnotatedString(fullLogText))
-            viewModel.showUserMessage("Diagnostic log copied to clipboard")
-        },
-        onClearLogs = { viewModel.clearLogs() },
+        label = "settings_subscreen_transition",
         modifier = modifier
-    )
+    ) { showContactSupport ->
+        if (showContactSupport) {
+            BackHandler {
+                isContactSupportOpen = false
+            }
+            ContactSupportScreen(
+                onBack = { isContactSupportOpen = false },
+                onShowMessage = { viewModel.showUserMessage(it) }
+            )
+        } else {
+            val config by viewModel.config.collectAsState()
+            val logs by viewModel.diagnosticLogs.collectAsState()
+
+            val autoSync by viewModel.autoSync.collectAsState()
+            val syncTextOnly by viewModel.syncTextOnly.collectAsState()
+            val clearOnDisconnect by viewModel.clearOnDisconnect.collectAsState()
+            val themeMode by viewModel.themeMode.collectAsState()
+            val reduceMotionFollowSystem by viewModel.reduceMotionFollowSystem.collectAsState()
+            val hapticFeedback by viewModel.hapticFeedback.collectAsState()
+
+            val clipboardManager = LocalClipboardManager.current
+
+            SettingsScreenContent(
+                config = config,
+                logs = logs,
+                autoSync = autoSync,
+                syncTextOnly = syncTextOnly,
+                clearOnDisconnect = clearOnDisconnect,
+                themeMode = themeMode,
+                reduceMotionFollowSystem = reduceMotionFollowSystem,
+                hapticFeedback = hapticFeedback,
+                scrollState = scrollState,
+                onMacChange = { newMac -> viewModel.updateMac(newMac) },
+                onChannelChange = { newChannel -> viewModel.updateChannel(newChannel) },
+                onDeviceNameChange = { newName -> viewModel.updateDeviceName(newName) },
+                onHistoryCapChange = { newCap -> viewModel.updateHistoryCapacity(newCap) },
+                onAutoSyncChange = { viewModel.setAutoSync(it) },
+                onSyncTextOnlyChange = { viewModel.setSyncTextOnly(it) },
+                onClearOnDisconnectChange = { viewModel.setClearOnDisconnect(it) },
+                onThemeModeChange = { viewModel.setThemeMode(it) },
+                onReduceMotionFollowSystemChange = { viewModel.setReduceMotionFollowSystem(it) },
+                onHapticFeedbackChange = { viewModel.setHapticFeedback(it) },
+                onOpenContactSupport = { isContactSupportOpen = true },
+                onCopyMac = { mac ->
+                    clipboardManager.setText(AnnotatedString(mac))
+                    viewModel.showUserMessage("Copied")
+                },
+                onCopyLogs = {
+                    val fullLogText = logs.joinToString("\n") { "${it.formattedTime} [${it.level}] ${it.message}" }
+                    clipboardManager.setText(AnnotatedString(fullLogText))
+                    viewModel.showUserMessage("Diagnostic log copied to clipboard")
+                },
+                onClearLogs = { viewModel.clearLogs() }
+            )
+        }
+    }
 }
 
 @Composable
@@ -222,7 +280,6 @@ fun SettingsScreenContent(
     syncTextOnly: Boolean,
     clearOnDisconnect: Boolean,
     themeMode: String,
-    dynamicColor: Boolean,
     reduceMotionFollowSystem: Boolean = true,
     hapticFeedback: Boolean = true,
     onMacChange: (String) -> Boolean,
@@ -233,9 +290,9 @@ fun SettingsScreenContent(
     onSyncTextOnlyChange: (Boolean) -> Unit,
     onClearOnDisconnectChange: (Boolean) -> Unit,
     onThemeModeChange: (String) -> Unit,
-    onDynamicColorChange: (Boolean) -> Unit,
     onReduceMotionFollowSystemChange: (Boolean) -> Unit = {},
     onHapticFeedbackChange: (Boolean) -> Unit = {},
+    onOpenContactSupport: () -> Unit = {},
     onCopyMac: (String) -> Unit,
     onCopyLogs: () -> Unit = {},
     onClearLogs: () -> Unit = {},
@@ -250,6 +307,9 @@ fun SettingsScreenContent(
 
     val isScrolled by remember { derivedStateOf { scrollState.value > 8 } }
 
+    val colors = SynqviaTheme.colors
+    val isDark = SynqviaTheme.isDark
+
     ScreenScaffold(
         modifier = modifier,
         isScrolled = isScrolled,
@@ -261,14 +321,14 @@ fun SettingsScreenContent(
                 Icon(
                     imageVector = Icons.Default.Settings,
                     contentDescription = null,
-                    tint = PrimaryCyan,
+                    tint = colors.primary,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Settings",
                     style = SynqviaType.LargeTitle,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
             }
         }
@@ -291,7 +351,7 @@ fun SettingsScreenContent(
                 Text(
                     text = "Connection & Device",
                     style = SynqviaType.Headline,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -300,8 +360,10 @@ fun SettingsScreenContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (isDark) Color.Transparent else colors.surfaceInset)
                         .clickable(role = Role.Button) { showMacDialog = true }
-                        .padding(vertical = 4.dp),
+                        .padding(if (isDark) androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp) else androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -309,13 +371,13 @@ fun SettingsScreenContent(
                         Text(
                             text = "Linux PC Bluetooth MAC",
                             style = SynqviaType.Caption,
-                            color = TextSecondary
+                            color = colors.textSecondary
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = config.pcMac.ifBlank { "AA:BB:CC:DD:EE:FF" },
                             style = SynqviaType.Mono,
-                            color = if (config.pcMac.isNotBlank()) TextPrimary else TextTertiary
+                            color = if (config.pcMac.isNotBlank()) colors.textPrimary else colors.textTertiary
                         )
                     }
 
@@ -329,7 +391,7 @@ fun SettingsScreenContent(
                         Icon(
                             imageVector = Icons.Default.ContentCopy,
                             contentDescription = "Copy MAC",
-                            tint = TextSecondary,
+                            tint = if (isDark) colors.textSecondary else Color(0xFF2B3A55),
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -348,14 +410,14 @@ fun SettingsScreenContent(
                     Text(
                         text = "RFCOMM Channel",
                         style = SynqviaType.Body,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RollingNumber(
                             value = config.channel,
                             style = SynqviaType.HeadlineTnum,
-                            color = PrimaryCyan
+                            color = if (isDark) colors.primary else colors.textPrimary
                         )
                         Spacer(modifier = Modifier.width(12.dp))
 
@@ -364,8 +426,8 @@ fun SettingsScreenContent(
                             modifier = Modifier
                                 .size(28.dp)
                                 .clip(CircleShape)
-                                .background(SurfaceHigh)
-                                .border(1.dp, OutlineDark, CircleShape)
+                                .background(if (isDark) colors.surfaceHigh else Color.White)
+                                .border(1.dp, if (isDark) colors.outline else Color(0xFFC9D6EA), CircleShape)
                                 .pressable(
                                     targetScale = 0.90f,
                                     enabled = config.channel > 1,
@@ -381,7 +443,7 @@ fun SettingsScreenContent(
                             Text(
                                 text = "−",
                                 style = SynqviaType.Headline,
-                                color = TextPrimary
+                                color = if (isDark) colors.textPrimary else colors.textSecondary
                             )
                         }
 
@@ -392,8 +454,8 @@ fun SettingsScreenContent(
                             modifier = Modifier
                                 .size(28.dp)
                                 .clip(CircleShape)
-                                .background(SurfaceHigh)
-                                .border(1.dp, OutlineDark, CircleShape)
+                                .background(if (isDark) colors.surfaceHigh else Color.White)
+                                .border(1.dp, if (isDark) colors.outline else Color(0xFFC9D6EA), CircleShape)
                                 .pressable(
                                     targetScale = 0.90f,
                                     enabled = config.channel < 30,
@@ -409,7 +471,7 @@ fun SettingsScreenContent(
                             Text(
                                 text = "+",
                                 style = SynqviaType.Headline,
-                                color = TextPrimary
+                                color = if (isDark) colors.textPrimary else colors.primary
                             )
                         }
                     }
@@ -429,20 +491,20 @@ fun SettingsScreenContent(
                     Text(
                         text = "Broadcast Device Name",
                         style = SynqviaType.Body,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = config.deviceName,
                             style = SynqviaType.Footnote,
-                            color = TextSecondary
+                            color = colors.textSecondary
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = Icons.Default.ChevronRight,
                             contentDescription = null,
-                            tint = TextSecondary,
+                            tint = colors.textTertiary,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -459,26 +521,33 @@ fun SettingsScreenContent(
                     Text(
                         text = "History Capacity",
                         style = SynqviaType.Body,
-                        color = TextPrimary
+                        color = colors.textPrimary
                     )
-                    if (config.historyCap == 0) {
-                        Text(
-                            text = "Unlimited",
-                            style = SynqviaType.CaptionTnum,
-                            color = TextSecondary
-                        )
-                    } else {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RollingNumber(
-                                value = config.historyCap,
-                                style = SynqviaType.CaptionTnum,
-                                color = TextSecondary
-                            )
+                    Box(
+                        modifier = if (isDark) Modifier else Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(colors.surfaceInset)
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        if (config.historyCap == 0) {
                             Text(
-                                text = " items",
+                                text = "Unlimited",
                                 style = SynqviaType.CaptionTnum,
-                                color = TextSecondary
+                                color = colors.textSecondary
                             )
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RollingNumber(
+                                    value = config.historyCap,
+                                    style = SynqviaType.CaptionTnum,
+                                    color = colors.textSecondary
+                                )
+                                Text(
+                                    text = " items",
+                                    style = SynqviaType.CaptionTnum,
+                                    color = colors.textSecondary
+                                )
+                            }
                         }
                     }
                 }
@@ -501,7 +570,7 @@ fun SettingsScreenContent(
                 Text(
                     text = "Data & Sync",
                     style = SynqviaType.Headline,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -511,6 +580,8 @@ fun SettingsScreenContent(
                     title = "Auto Sync",
                     subtitle = "Sync clipboard changes automatically",
                     leadingIcon = Icons.Default.Sync,
+                    iconContainerColor = colors.tileAutoSyncContainer,
+                    iconContentColor = colors.tileAutoSyncContent,
                     checked = autoSync,
                     onCheckedChange = onAutoSyncChange
                 )
@@ -522,6 +593,8 @@ fun SettingsScreenContent(
                     title = "Sync Text Only",
                     subtitle = "Images and files are not synced (v1)",
                     leadingIcon = Icons.Default.TextFields,
+                    iconContainerColor = colors.tileTextOnlyContainer,
+                    iconContentColor = colors.tileTextOnlyContent,
                     checked = syncTextOnly,
                     onCheckedChange = onSyncTextOnlyChange
                 )
@@ -533,6 +606,8 @@ fun SettingsScreenContent(
                     title = "Clear on Device Disconnect",
                     subtitle = "Clear remote clipboard when disconnected",
                     leadingIcon = Icons.Default.DeleteSweep,
+                    iconContainerColor = colors.tileClearContainer,
+                    iconContentColor = colors.tileClearContent,
                     checked = clearOnDisconnect,
                     onCheckedChange = onClearOnDisconnectChange
                 )
@@ -548,7 +623,7 @@ fun SettingsScreenContent(
                 Text(
                     text = "Appearance",
                     style = SynqviaType.Headline,
-                    color = TextPrimary
+                    color = colors.textPrimary
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -566,13 +641,13 @@ fun SettingsScreenContent(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(AccentBlue.copy(alpha = 0.14f)),
+                            .background(colors.tileThemeContainer),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Palette,
                             contentDescription = null,
-                            tint = PrimaryCyan,
+                            tint = colors.tileThemeContent,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -581,7 +656,7 @@ fun SettingsScreenContent(
                     Text(
                         text = "Theme",
                         style = SynqviaType.Body,
-                        color = TextPrimary,
+                        color = colors.textPrimary,
                         modifier = Modifier.weight(1f)
                     )
 
@@ -593,13 +668,13 @@ fun SettingsScreenContent(
                                 else -> "System"
                             },
                             style = SynqviaType.Footnote,
-                            color = TextSecondary
+                            color = colors.textSecondary
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = Icons.Default.ChevronRight,
                             contentDescription = null,
-                            tint = TextSecondary,
+                            tint = colors.textTertiary,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -607,23 +682,13 @@ fun SettingsScreenContent(
 
                 DividerItem()
 
-                // Use Dynamic Color
-                val isDynamicColorSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                SettingsToggleRow(
-                    title = "Use Dynamic Color",
-                    subtitle = "Match your Android theme",
-                    leadingIcon = Icons.Default.ColorLens,
-                    checked = dynamicColor,
-                    onCheckedChange = onDynamicColorChange,
-                    enabled = isDynamicColorSupported
-                )
-
-                DividerItem()
-
-                // Reduce Motion: follow system
+                // Reduce Motion
                 SettingsToggleRow(
                     title = "Reduce Motion",
-                    subtitle = "Follow system accessibility motion preference",
+                    subtitle = "Off follows your system setting. On always minimizes animations.",
+                    leadingIcon = Icons.Default.Animation,
+                    iconContainerColor = colors.tileThemeContainer,
+                    iconContentColor = colors.tileThemeContent,
                     checked = reduceMotionFollowSystem,
                     onCheckedChange = onReduceMotionFollowSystemChange
                 )
@@ -634,6 +699,9 @@ fun SettingsScreenContent(
                 SettingsToggleRow(
                     title = "Haptic Feedback",
                     subtitle = "Vibration ticks on taps, toggles, and sync actions",
+                    leadingIcon = Icons.Default.Vibration,
+                    iconContainerColor = colors.tileThemeContainer,
+                    iconContentColor = colors.tileThemeContent,
                     checked = hapticFeedback,
                     onCheckedChange = onHapticFeedbackChange
                 )
@@ -646,61 +714,48 @@ fun SettingsScreenContent(
 
             // E) Collapsible Protocol Diagnostic Log
             val logHaptics = LocalAppHaptics.current
+            val terminalIcon = ImageVector.vectorResource(R.drawable.ic_terminal_rounded)
             SynqviaCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .animateContentSize(snappySpring())
                     .entryStagger(index = 4),
-                padding = 12.dp
+                padding = 0.dp
             ) {
                 val chevronRotation by animateFloatAsState(
                     targetValue = if (showLogs) 180f else 0f,
                     animationSpec = tween(durationMillis = 250, easing = DecelerateEasing),
                     label = "log_chevron"
                 )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(role = Role.Button) {
-                            logHaptics.tick()
-                            showLogs = !showLogs
-                        },
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                SettingsNavRow(
+                    icon = terminalIcon,
+                    title = "Protocol Diagnostic Log",
+                    iconContainerColor = colors.blueContainer,
+                    iconContentColor = colors.blue,
+                    trailing = {
                         Icon(
-                            imageVector = TerminalIcon,
-                            contentDescription = null,
-                            tint = PrimaryCyan,
-                            modifier = Modifier.size(20.dp)
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (showLogs) "Hide logs" else "Show logs",
+                            tint = colors.textTertiary,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .graphicsLayer { rotationZ = chevronRotation }
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Protocol Diagnostic Log",
-                            style = SynqviaType.Headline,
-                            color = TextPrimary
-                        )
+                    },
+                    modifier = Modifier.clickable(role = Role.Button) {
+                        logHaptics.tick()
+                        showLogs = !showLogs
                     }
-
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = if (showLogs) "Hide logs" else "Show logs",
-                        tint = TextSecondary,
-                        modifier = Modifier
-                            .size(24.dp)
-                            .graphicsLayer { rotationZ = chevronRotation }
-                    )
-                }
+                )
 
                 AnimatedVisibility(visible = showLogs) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 10.dp)
+                            .padding(start = 16.dp, end = 16.dp, bottom = 14.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(SurfaceInset)
-                            .border(1.dp, OutlineDark, RoundedCornerShape(10.dp))
+                            .background(colors.surfaceInset)
+                            .border(1.dp, colors.outline, RoundedCornerShape(10.dp))
                             .padding(12.dp)
                     ) {
                         Column(
@@ -713,16 +768,26 @@ fun SettingsScreenContent(
                                 Text(
                                     text = "No diagnostic events logged yet.",
                                     style = SynqviaType.MonoSmall,
-                                    color = TextTertiary
+                                    color = colors.textTertiary
                                 )
                             } else {
                                 logs.takeLast(50).forEach { log ->
-                                    val badgeColor = when (log.level) {
-                                        "SUCCESS" -> StatusConnected
-                                        "FRAME" -> PrimaryCyan
-                                        "WARN" -> StatusRetrying
-                                        "ERROR" -> AccentRed
-                                        else -> TextSecondary
+                                    val badgeColor = if (colors.isDark) {
+                                        when (log.level) {
+                                            "SUCCESS" -> Color(0xFF22C55E)
+                                            "FRAME", "INFO" -> Color(0xFF00E5FF)
+                                            "WARN" -> Color(0xFFF59E0B)
+                                            "ERROR" -> Color(0xFFEF4444)
+                                            else -> colors.textSecondary
+                                        }
+                                    } else {
+                                        when (log.level) {
+                                            "SUCCESS" -> Color(0xFF1A9B5A)
+                                            "FRAME", "INFO" -> Color(0xFF1F6FEB)
+                                            "WARN" -> Color(0xFFD97706)
+                                            "ERROR" -> Color(0xFFC93238)
+                                            else -> colors.textSecondary
+                                        }
                                     }
                                     Row(
                                         modifier = Modifier
@@ -733,7 +798,7 @@ fun SettingsScreenContent(
                                         Text(
                                             text = log.formattedTime,
                                             style = SynqviaType.MonoSmall,
-                                            color = TextTertiary
+                                            color = colors.textTertiary
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
@@ -745,7 +810,7 @@ fun SettingsScreenContent(
                                         Text(
                                             text = log.message,
                                             style = SynqviaType.MonoSmall,
-                                            color = TextSecondary,
+                                            color = if (colors.isDark) colors.textSecondary else Color(0xFF0B1B33).copy(alpha = 0.85f),
                                             modifier = Modifier.weight(1f)
                                         )
                                     }
@@ -762,8 +827,8 @@ fun SettingsScreenContent(
                         ) {
                             Text(
                                 text = "Copy log",
-                                style = SynqviaType.ButtonSmall.copy(color = PrimaryCyan),
-                                color = PrimaryCyan,
+                                style = SynqviaType.ButtonSmall.copy(color = colors.primary),
+                                color = colors.primary,
                                 modifier = Modifier
                                     .clickable(role = Role.Button) {
                                         logHaptics.confirm()
@@ -774,8 +839,8 @@ fun SettingsScreenContent(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Clear",
-                                style = SynqviaType.ButtonSmall.copy(color = AccentRed),
-                                color = AccentRed,
+                                style = SynqviaType.ButtonSmall.copy(color = colors.redText),
+                                color = colors.redText,
                                 modifier = Modifier
                                     .clickable(role = Role.Button) {
                                         logHaptics.reject()
@@ -788,9 +853,41 @@ fun SettingsScreenContent(
                 }
             }
 
+            // Contact & Support entry card (above footer)
+            SynqviaCard(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("settings_contact_support_card")
+                    .entryStagger(index = 5)
+                    .pressable(
+                        targetScale = 0.98f,
+                        showOverlay = true,
+                        onClick = {
+                            haptics.tick()
+                            onOpenContactSupport()
+                        }
+                    ),
+                padding = 0.dp
+            ) {
+                SettingsNavRow(
+                    icon = Icons.Outlined.ChatBubbleOutline,
+                    title = stringResource(R.string.contact_support_title),
+                    subtitle = stringResource(R.string.contact_support_subtitle),
+                    trailing = {
+                        Icon(
+                            imageVector = Icons.Default.ChevronRight,
+                            contentDescription = null,
+                            tint = colors.textTertiary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                )
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Footer: "Synqvia 1.0.0 - GPL-3.0" centered, Caption style, textTertiary
+            // Footer: "Synqvia <version> · GPL-3.0" centered, Caption style, textTertiary
+            val context = LocalContext.current
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -798,9 +895,9 @@ fun SettingsScreenContent(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Synqvia 1.0.0 - GPL-3.0",
+                    text = AppVersionHelper.getSettingsFooterText(context),
                     style = SynqviaType.Caption,
-                    color = TextTertiary
+                    color = colors.textTertiary
                 )
             }
         }
@@ -849,7 +946,7 @@ private fun DividerItem() {
             .fillMaxWidth()
             .padding(vertical = 12.dp)
             .height(1.dp)
-            .background(DividerDark)
+            .background(SynqviaTheme.colors.divider)
     )
 }
 
@@ -860,8 +957,11 @@ private fun SettingsToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     leadingIcon: ImageVector? = null,
+    iconContainerColor: Color? = null,
+    iconContentColor: Color? = null,
     enabled: Boolean = true
 ) {
+    val colors = SynqviaTheme.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -874,13 +974,13 @@ private fun SettingsToggleRow(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(AccentBlue.copy(alpha = 0.14f)),
+                    .background(iconContainerColor ?: (if (colors.isDark) Color(0xFF3B82F6).copy(alpha = 0.14f) else colors.tileAutoSyncContainer)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = leadingIcon,
                     contentDescription = null,
-                    tint = PrimaryCyan,
+                    tint = iconContentColor ?: (if (colors.isDark) Color(0xFF00E5FF) else colors.primary),
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -895,13 +995,13 @@ private fun SettingsToggleRow(
             Text(
                 text = title,
                 style = SynqviaType.Body,
-                color = TextPrimary
+                color = colors.textPrimary
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = subtitle,
                 style = SynqviaType.Caption,
-                color = TextSecondary
+                color = colors.textSecondary
             )
         }
 
@@ -995,6 +1095,7 @@ fun DottedCapacitySlider(
             },
         contentAlignment = Alignment.Center
     ) {
+        val colors = SynqviaTheme.colors
         androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
             val paddingPx = 8.dp.toPx()
             val trackWidth = size.width - 2 * paddingPx
@@ -1008,7 +1109,7 @@ fun DottedCapacitySlider(
             for (i in 0..totalDots) {
                 val dotX = paddingPx + (i.toFloat() / totalDots) * trackWidth
                 val isActive = dotX <= thumbX + 1f
-                val dotColor = if (isActive) PrimaryCyan else Color.White.copy(alpha = 0.20f)
+                val dotColor = if (isActive) colors.sliderActive else if (i % 5 == 0) colors.sliderTick else colors.sliderInactive
 
                 if (i % 5 == 0) {
                     // Taller tick every 5th dot
@@ -1036,7 +1137,7 @@ fun DottedCapacitySlider(
             val scaledWidth = baseThumbWidth * thumbScale
             val scaledHeight = baseThumbHeight * thumbScale
             drawRoundRect(
-                color = PrimaryCyan,
+                color = colors.sliderActive,
                 topLeft = Offset(thumbX - scaledWidth / 2f, centerY - scaledHeight / 2f),
                 size = Size(scaledWidth, scaledHeight),
                 cornerRadius = CornerRadius(2.dp.toPx() * thumbScale)
@@ -1051,26 +1152,29 @@ private fun EditMacDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
+    val colors = SynqviaTheme.colors
     var text by remember { mutableStateOf(initialMac) }
     val isValid = remember(text) { text.isBlank() || SyncPreferences.isValidMac(text) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit PC Bluetooth MAC", color = TextPrimary) },
+        containerColor = colors.surface,
+        title = { Text("Edit PC Bluetooth MAC", color = colors.textPrimary) },
         text = {
             Column {
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it.uppercase(Locale.ROOT) },
-                    placeholder = { Text("AA:BB:CC:DD:EE:FF", color = TextTertiary) },
+                    placeholder = { Text("AA:BB:CC:DD:EE:FF", color = colors.textTertiary) },
                     singleLine = true,
                     isError = !isValid,
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryCyan,
-                        unfocusedBorderColor = OutlineDark,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        focusedBorderColor = colors.primary,
+                        unfocusedBorderColor = colors.outline,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary,
+                        cursorColor = colors.primary
                     ),
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Characters,
@@ -1081,7 +1185,7 @@ private fun EditMacDialog(
                     Text(
                         text = "Invalid MAC format (must be XX:XX:XX:XX:XX:XX)",
                         style = SynqviaType.Caption,
-                        color = AccentRed,
+                        color = colors.redText,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
@@ -1092,12 +1196,12 @@ private fun EditMacDialog(
                 onClick = { onConfirm(text) },
                 enabled = isValid
             ) {
-                Text("Save", color = if (isValid) PrimaryCyan else TextTertiary)
+                Text("Save", color = if (isValid) colors.primary else colors.textTertiary)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextSecondary)
+                Text("Cancel", color = colors.textSecondary)
             }
         }
     )
@@ -1110,11 +1214,13 @@ private fun EditDeviceNameDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
+    val colors = SynqviaTheme.colors
     var text by remember { mutableStateOf(initialName) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Broadcast Device Name", color = TextPrimary) },
+        containerColor = colors.surface,
+        title = { Text("Broadcast Device Name", color = colors.textPrimary) },
         text = {
             Column {
                 OutlinedTextField(
@@ -1123,17 +1229,18 @@ private fun EditDeviceNameDialog(
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryCyan,
-                        unfocusedBorderColor = OutlineDark,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        focusedBorderColor = colors.primary,
+                        unfocusedBorderColor = colors.outline,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary,
+                        cursorColor = colors.primary
                     )
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Device ID: $deviceId",
                     style = SynqviaType.MonoSmall,
-                    color = TextTertiary
+                    color = colors.textTertiary
                 )
             }
         },
@@ -1142,12 +1249,12 @@ private fun EditDeviceNameDialog(
                 onClick = { onConfirm(text) },
                 enabled = text.isNotBlank()
             ) {
-                Text("Save", color = PrimaryCyan)
+                Text("Save", color = colors.primary)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextSecondary)
+                Text("Cancel", color = colors.textSecondary)
             }
         }
     )
@@ -1159,11 +1266,13 @@ private fun ThemePickerDialog(
     onDismiss: () -> Unit,
     onSelectTheme: (String) -> Unit
 ) {
+    val colors = SynqviaTheme.colors
     val options = listOf("system" to "System", "light" to "Light", "dark" to "Dark")
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Choose Theme", color = TextPrimary) },
+        containerColor = colors.surface,
+        title = { Text("Choose Theme", color = colors.textPrimary) },
         text = {
             Column {
                 options.forEach { (key, label) ->
@@ -1181,10 +1290,13 @@ private fun ThemePickerDialog(
                         RadioButton(
                             selected = (key == currentTheme),
                             onClick = null,
-                            colors = RadioButtonDefaults.colors(selectedColor = PrimaryCyan)
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = colors.primary,
+                                unselectedColor = colors.textSecondary
+                            )
                         )
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text(text = label, style = SynqviaType.Body, color = TextPrimary)
+                        Text(text = label, style = SynqviaType.Body, color = colors.textPrimary)
                     }
                 }
             }
@@ -1192,7 +1304,7 @@ private fun ThemePickerDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextSecondary)
+                Text("Cancel", color = colors.textSecondary)
             }
         }
     )
@@ -1222,7 +1334,6 @@ private fun SettingsScreenDarkPreview() {
             syncTextOnly = true,
             clearOnDisconnect = false,
             themeMode = "dark",
-            dynamicColor = false,
             onMacChange = { true },
             onChannelChange = {},
             onDeviceNameChange = {},
@@ -1231,7 +1342,6 @@ private fun SettingsScreenDarkPreview() {
             onSyncTextOnlyChange = {},
             onClearOnDisconnectChange = {},
             onThemeModeChange = {},
-            onDynamicColorChange = {},
             onCopyMac = {},
             onClearLogs = {}
         )
@@ -1255,7 +1365,6 @@ private fun SettingsScreenLightPreview() {
             syncTextOnly = true,
             clearOnDisconnect = false,
             themeMode = "light",
-            dynamicColor = false,
             onMacChange = { true },
             onChannelChange = {},
             onDeviceNameChange = {},
@@ -1264,7 +1373,6 @@ private fun SettingsScreenLightPreview() {
             onSyncTextOnlyChange = {},
             onClearOnDisconnectChange = {},
             onThemeModeChange = {},
-            onDynamicColorChange = {},
             onCopyMac = {},
             onClearLogs = {}
         )

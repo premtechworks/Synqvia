@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -55,8 +56,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.github.premtechworks.synqvia.data.ClipEntity
-import com.github.premtechworks.synqvia.ui.CardGlassStyle
-import com.github.premtechworks.synqvia.ui.GlassCardBorderBrush
+import com.github.premtechworks.synqvia.ui.rememberCardGlassStyle
+import com.github.premtechworks.synqvia.ui.rememberGlassCardBorderBrush
+import com.github.premtechworks.synqvia.ui.components.SynqviaLightDarkPreview
 import com.github.premtechworks.synqvia.ui.motion.LocalAppHaptics
 import com.github.premtechworks.synqvia.ui.LocalHazeState
 import com.github.premtechworks.synqvia.ui.LocalIsBlurSupported
@@ -65,18 +67,10 @@ import com.github.premtechworks.synqvia.ui.motion.LocalReduceMotion
 import com.github.premtechworks.synqvia.ui.motion.pressable
 import com.github.premtechworks.synqvia.ui.motion.softSpring
 import com.github.premtechworks.synqvia.ui.softCardShadow
-import com.github.premtechworks.synqvia.ui.theme.AccentGold
-import com.github.premtechworks.synqvia.ui.theme.AccentRed
-import com.github.premtechworks.synqvia.ui.theme.OutlineDark
-import com.github.premtechworks.synqvia.ui.theme.PrimaryCyan
-import com.github.premtechworks.synqvia.ui.theme.SurfaceDark
-import com.github.premtechworks.synqvia.ui.theme.SurfaceHigh
-import com.github.premtechworks.synqvia.ui.theme.SurfaceInset
 import com.github.premtechworks.synqvia.ui.theme.SynqviaTheme
 import com.github.premtechworks.synqvia.ui.theme.SynqviaType
 import com.github.premtechworks.synqvia.ui.theme.SynqviaTypography
-import com.github.premtechworks.synqvia.ui.theme.TextPrimary
-import com.github.premtechworks.synqvia.ui.theme.TextSecondary
+import com.github.premtechworks.synqvia.ui.theme.synqviaCardShadow
 import com.github.premtechworks.synqvia.ui.util.formatHistoryItemTime
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
@@ -89,7 +83,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
-import com.github.premtechworks.synqvia.ui.theme.AccentGreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -176,12 +169,20 @@ fun ClipDetailOverlay(
             .fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
+        val colors = SynqviaTheme.colors
+        val isDark = SynqviaTheme.isDark
+
         // LAYER 1: Scrim (Tap to dismiss)
-        val scrimAlpha = if (isBlurSupported) 0.30f * effectiveProgress else 0.78f * effectiveProgress
+        val scrimBase = if (isDark) {
+            Color.Black.copy(alpha = if (isBlurSupported) 0.30f else 0.78f)
+        } else {
+            colors.scrim
+        }
+        val scrimColor = scrimBase.copy(alpha = scrimBase.alpha * effectiveProgress)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = scrimAlpha))
+                .background(scrimColor)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -192,7 +193,7 @@ fun ClipDetailOverlay(
         // LAYER 2: Full-screen Blur Effect
         if (isBlurSupported && hazeState != null && effectiveProgress > 0.01f) {
             val blurRadiusDp = (20f * effectiveProgress).dp
-            val blurTintAlpha = 0.35f * effectiveProgress
+            val blurTint = colors.glassTintSheet.copy(alpha = colors.glassTintSheet.alpha * effectiveProgress)
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -200,7 +201,7 @@ fun ClipDetailOverlay(
                         state = hazeState,
                         style = HazeStyle(
                             blurRadius = blurRadiusDp,
-                            tint = HazeTint(Color(0xFF050B18).copy(alpha = blurTintAlpha))
+                            tint = HazeTint(blurTint)
                         )
                     )
             )
@@ -208,25 +209,46 @@ fun ClipDetailOverlay(
 
         // LAYER 3: The Card
         val cardShape = RoundedCornerShape(24.dp)
+        val cardGlassStyle = rememberCardGlassStyle()
+        val glassBorderBrush = rememberGlassCardBorderBrush()
         val cardModifier = if (isBlurSupported && hazeState != null) {
             Modifier
-                .softCardShadow(
-                    offsetY = 24.dp,
-                    blurRadius = 48.dp,
-                    color = Color.Black.copy(alpha = 0.45f * effectiveProgress),
-                    cornerRadius = 24.dp
+                .then(
+                    if (isDark) {
+                        Modifier.softCardShadow(
+                            offsetY = 24.dp,
+                            blurRadius = 48.dp,
+                            color = Color.Black.copy(alpha = 0.45f * effectiveProgress),
+                            cornerRadius = 24.dp
+                        )
+                    } else {
+                        Modifier.synqviaCardShadow(elevation = 12.dp, shape = cardShape)
+                    }
                 )
                 .clip(cardShape)
-                .hazeEffect(
-                    state = hazeState,
-                    style = CardGlassStyle
+                .then(
+                    if (isDark) {
+                        Modifier.hazeEffect(
+                            state = hazeState,
+                            style = cardGlassStyle
+                        )
+                    } else {
+                        Modifier.background(colors.surface)
+                    }
                 )
-                .border(1.dp, GlassCardBorderBrush, cardShape)
+                .border(
+                    1.dp,
+                    if (isDark) glassBorderBrush else androidx.compose.ui.graphics.SolidColor(colors.outline),
+                    cardShape
+                )
         } else {
             Modifier
+                .then(
+                    if (!isDark) Modifier.synqviaCardShadow(elevation = 12.dp, shape = cardShape) else Modifier
+                )
                 .clip(cardShape)
-                .background(Color(0xFF16233B))
-                .border(1.dp, OutlineDark, cardShape)
+                .background(if (isDark) colors.surfaceHigh else colors.surface)
+                .border(1.dp, colors.outline, cardShape)
         }
 
         val cardTranslationY = if (reduceMotion) 0f else {
@@ -295,7 +317,7 @@ fun ClipDetailOverlay(
                 Text(
                     text = formatHistoryItemTime(clip.ts),
                     style = SynqviaType.CaptionTnum,
-                    color = TextSecondary
+                    color = colors.textSecondary
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -305,8 +327,8 @@ fun ClipDetailOverlay(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(SurfaceHigh)
-                        .border(1.dp, OutlineDark, CircleShape)
+                        .background(colors.surfaceHigh)
+                        .border(1.dp, colors.outline, CircleShape)
                         .pressable(
                             targetScale = 0.9f,
                             onClick = { dismissWithAnimation() }
@@ -316,7 +338,7 @@ fun ClipDetailOverlay(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Close",
-                        tint = TextSecondary,
+                        tint = if (isDark) colors.textSecondary else Color(0xFF2B3A55),
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -330,7 +352,7 @@ fun ClipDetailOverlay(
                 Text(
                     text = urlHost,
                     style = SynqviaType.CaptionSemiBold,
-                    color = PrimaryCyan,
+                    color = colors.primary,
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -342,8 +364,8 @@ fun ClipDetailOverlay(
                     .fillMaxWidth()
                     .heightIn(max = maxBodyHeight)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(SurfaceInset)
-                    .border(1.dp, OutlineDark, RoundedCornerShape(14.dp))
+                    .background(colors.surfaceInset)
+                    .border(1.dp, colors.outline, RoundedCornerShape(14.dp))
                     .padding(14.dp)
             ) {
                 SelectionContainer {
@@ -356,9 +378,9 @@ fun ClipDetailOverlay(
                     }
 
                     val textColor = if (clip.text.isEmpty() || clip.sensitive) {
-                        TextSecondary
+                        colors.textSecondary
                     } else {
-                        TextPrimary
+                        colors.textPrimary
                     }
 
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
@@ -377,7 +399,7 @@ fun ClipDetailOverlay(
             Text(
                 text = "${clip.text.length} chars",
                 style = SynqviaType.CaptionTnum,
-                color = TextSecondary,
+                color = colors.textSecondary,
                 modifier = Modifier.padding(horizontal = 4.dp)
             )
 
@@ -386,97 +408,234 @@ fun ClipDetailOverlay(
             var isCopied by remember { mutableStateOf(false) }
             val pinScale = remember { Animatable(1f) }
 
-            // Action row: Copy, Share, (Open link if URL), Pin/Unpin, Delete
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                DetailActionItem(
-                    icon = if (isCopied) Icons.Default.Check else Icons.Default.ContentCopy,
-                    label = if (isCopied) "Copied" else "Copy",
-                    tint = if (isCopied) AccentGreen else TextPrimary,
-                    onClick = {
-                        haptics.confirm()
-                        onCopy(clip.text)
-                        isCopied = true
-                        coroutineScope.launch {
-                            delay(1200)
-                            isCopied = false
-                            dismissWithAnimation()
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-
-                DetailActionItem(
-                    icon = Icons.Default.Share,
-                    label = "Share",
-                    tint = TextPrimary,
-                    onClick = {
-                        haptics.tick()
-                        onShare(clip.text)
-                        dismissWithAnimation()
-                    },
-                    modifier = Modifier.weight(1f)
-                )
-
-                if (urlHost != null) {
+            // Action row
+            if (isDark) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     DetailActionItem(
-                        icon = Icons.AutoMirrored.Filled.OpenInNew,
-                        label = "Open link",
-                        tint = PrimaryCyan,
+                        icon = if (isCopied) Icons.Default.Check else Icons.Default.ContentCopy,
+                        label = if (isCopied) "Copied" else "Copy",
+                        tint = if (isCopied) colors.green else colors.textPrimary,
+                        onClick = {
+                            haptics.confirm()
+                            onCopy(clip.text)
+                            isCopied = true
+                            coroutineScope.launch {
+                                delay(1200)
+                                isCopied = false
+                                dismissWithAnimation()
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    DetailActionItem(
+                        icon = Icons.Default.Share,
+                        label = "Share",
+                        tint = colors.textPrimary,
                         onClick = {
                             haptics.tick()
-                            val normalized = com.github.premtechworks.synqvia.ui.util.UrlUtil.normalizeUrl(clip.text)
-                            if (normalized != null) {
-                                try {
-                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(normalized)).apply {
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            onShare(clip.text)
+                            dismissWithAnimation()
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    if (urlHost != null) {
+                        DetailActionItem(
+                            icon = Icons.AutoMirrored.Filled.OpenInNew,
+                            label = "Open link",
+                            tint = colors.primary,
+                            onClick = {
+                                haptics.tick()
+                                val normalized = com.github.premtechworks.synqvia.ui.util.UrlUtil.normalizeUrl(clip.text)
+                                if (normalized != null) {
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(normalized)).apply {
+                                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        }
+                                        context.startActivity(intent)
+                                    } catch (_: Exception) {}
+                                }
+                                dismissWithAnimation()
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    DetailActionItem(
+                        icon = if (clip.pinned) Icons.Default.PushPin else Icons.Outlined.PushPin,
+                        label = if (clip.pinned) "Unpin" else "Pin",
+                        tint = if (clip.pinned) colors.gold else colors.textPrimary,
+                        iconScale = pinScale.value,
+                        onClick = {
+                            if (!clip.pinned) haptics.confirm() else haptics.tick()
+                            onTogglePin(clip.id, !clip.pinned)
+                            if (!reduceMotion) {
+                                coroutineScope.launch {
+                                    pinScale.snapTo(1f)
+                                    if (!clip.pinned) {
+                                        pinScale.animateTo(1.3f, tween(100, easing = DecelerateEasing))
+                                        pinScale.animateTo(1f, softSpring())
+                                    } else {
+                                        pinScale.animateTo(0.85f, tween(100, easing = DecelerateEasing))
+                                        pinScale.animateTo(1f, softSpring())
                                     }
-                                    context.startActivity(intent)
-                                } catch (_: Exception) {}
+                                }
                             }
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    DetailActionItem(
+                        icon = Icons.Default.Delete,
+                        label = "Delete",
+                        tint = colors.red,
+                        onClick = {
+                            haptics.reject()
+                            onDelete(clip.id)
                             dismissWithAnimation()
                         },
                         modifier = Modifier.weight(1f)
                     )
                 }
-
-                DetailActionItem(
-                    icon = if (clip.pinned) Icons.Default.PushPin else Icons.Outlined.PushPin,
-                    label = if (clip.pinned) "Unpin" else "Pin",
-                    tint = if (clip.pinned) AccentGold else TextPrimary,
-                    iconScale = pinScale.value,
-                    onClick = {
-                        if (!clip.pinned) haptics.confirm() else haptics.tick()
-                        onTogglePin(clip.id, !clip.pinned)
-                        if (!reduceMotion) {
-                            coroutineScope.launch {
-                                pinScale.snapTo(1f)
-                                if (!clip.pinned) {
-                                    pinScale.animateTo(1.3f, tween(100, easing = DecelerateEasing))
-                                    pinScale.animateTo(1f, softSpring())
-                                } else {
-                                    pinScale.animateTo(0.85f, tween(100, easing = DecelerateEasing))
-                                    pinScale.animateTo(1f, softSpring())
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(colors.surfaceInset)
+                        .border(1.dp, colors.outline, RoundedCornerShape(12.dp))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(androidx.compose.foundation.layout.IntrinsicSize.Min),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        LightDetailActionItem(
+                            icon = if (isCopied) Icons.Default.Check else Icons.Default.ContentCopy,
+                            label = if (isCopied) "Copied" else "Copy",
+                            iconTint = if (isCopied) colors.green else Color(0xFF2B3A55),
+                            labelColor = colors.textPrimary,
+                            onClick = {
+                                haptics.confirm()
+                                onCopy(clip.text)
+                                isCopied = true
+                                coroutineScope.launch {
+                                    delay(1200)
+                                    isCopied = false
+                                    dismissWithAnimation()
                                 }
-                            }
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
-                )
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
 
-                DetailActionItem(
-                    icon = Icons.Default.Delete,
-                    label = "Delete",
-                    tint = AccentRed,
-                    onClick = {
-                        haptics.reject()
-                        onDelete(clip.id)
-                        dismissWithAnimation()
-                    },
-                    modifier = Modifier.weight(1f)
-                )
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .fillMaxHeight()
+                                .background(colors.divider)
+                        )
+
+                        LightDetailActionItem(
+                            icon = Icons.Default.Share,
+                            label = "Share",
+                            iconTint = Color(0xFF2B3A55),
+                            labelColor = colors.textPrimary,
+                            onClick = {
+                                haptics.tick()
+                                onShare(clip.text)
+                                dismissWithAnimation()
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        if (urlHost != null) {
+                            Box(
+                                modifier = Modifier
+                                    .width(1.dp)
+                                    .fillMaxHeight()
+                                    .background(colors.divider)
+                            )
+
+                            LightDetailActionItem(
+                                icon = Icons.AutoMirrored.Filled.OpenInNew,
+                                label = "Open link",
+                                iconTint = colors.primary,
+                                labelColor = colors.textPrimary,
+                                onClick = {
+                                    haptics.tick()
+                                    val normalized = com.github.premtechworks.synqvia.ui.util.UrlUtil.normalizeUrl(clip.text)
+                                    if (normalized != null) {
+                                        try {
+                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(normalized)).apply {
+                                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                            }
+                                            context.startActivity(intent)
+                                        } catch (_: Exception) {}
+                                    }
+                                    dismissWithAnimation()
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .fillMaxHeight()
+                                .background(colors.divider)
+                        )
+
+                        LightDetailActionItem(
+                            icon = if (clip.pinned) Icons.Default.PushPin else Icons.Outlined.PushPin,
+                            label = if (clip.pinned) "Unpin" else "Pin",
+                            iconTint = if (clip.pinned) colors.gold else Color(0xFF2B3A55),
+                            labelColor = colors.textPrimary,
+                            iconScale = pinScale.value,
+                            onClick = {
+                                if (!clip.pinned) haptics.confirm() else haptics.tick()
+                                onTogglePin(clip.id, !clip.pinned)
+                                if (!reduceMotion) {
+                                    coroutineScope.launch {
+                                        pinScale.snapTo(1f)
+                                        if (!clip.pinned) {
+                                            pinScale.animateTo(1.3f, tween(100, easing = DecelerateEasing))
+                                            pinScale.animateTo(1f, softSpring())
+                                        } else {
+                                            pinScale.animateTo(0.85f, tween(100, easing = DecelerateEasing))
+                                            pinScale.animateTo(1f, softSpring())
+                                        }
+                                    }
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .fillMaxHeight()
+                                .background(colors.divider)
+                        )
+
+                        LightDetailActionItem(
+                            icon = Icons.Default.Delete,
+                            label = "Delete",
+                            iconTint = colors.red,
+                            labelColor = colors.redText,
+                            onClick = {
+                                haptics.reject()
+                                onDelete(clip.id)
+                                dismissWithAnimation()
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
         }
     }
@@ -530,8 +689,8 @@ private fun DetailActionItem(
             modifier = Modifier
                 .size(40.dp)
                 .clip(CircleShape)
-                .background(SurfaceHigh)
-                .border(1.dp, OutlineDark, CircleShape),
+                .background(SynqviaTheme.colors.surfaceHigh)
+                .border(1.dp, SynqviaTheme.colors.outline, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             AnimatedContent(
@@ -561,7 +720,59 @@ private fun DetailActionItem(
     }
 }
 
-@Preview(showBackground = true)
+@Composable
+private fun LightDetailActionItem(
+    icon: ImageVector,
+    label: String,
+    iconTint: Color,
+    labelColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    iconScale: Float = 1f
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .pressable(
+                targetScale = 0.94f,
+                showOverlay = true,
+                onClick = onClick
+            )
+            .padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        AnimatedContent(
+            targetState = icon,
+            transitionSpec = { fadeIn(tween(150)) togetherWith fadeOut(tween(150)) },
+            label = "lightActionIcon"
+        ) { targetIcon ->
+            Icon(
+                imageVector = targetIcon,
+                contentDescription = label,
+                tint = iconTint,
+                modifier = Modifier
+                    .size(20.dp)
+                    .graphicsLayer {
+                        scaleX = iconScale
+                        scaleY = iconScale
+                    }
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            style = SynqviaType.CaptionSemiBold.copy(
+                fontSize = androidx.compose.ui.unit.TextUnit(12f, androidx.compose.ui.unit.TextUnitType.Sp),
+                color = labelColor
+            ),
+            color = labelColor,
+            maxLines = 1
+        )
+    }
+}
+
+@SynqviaLightDarkPreview
 @Composable
 private fun ClipDetailSheetPreview() {
     SynqviaTheme {

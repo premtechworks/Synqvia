@@ -29,6 +29,8 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.github.premtechworks.synqvia.ui.theme.SurfaceHigh
+import com.github.premtechworks.synqvia.ui.theme.SurfaceInset
 import com.github.premtechworks.synqvia.ui.theme.OutlineDark
 import com.github.premtechworks.synqvia.ui.theme.PrimaryCyan
 import com.github.premtechworks.synqvia.ui.theme.SurfaceDark
@@ -62,22 +64,64 @@ fun isBlurSupported(context: Context): Boolean {
  */
 val BottomBarGlassStyle = HazeStyle(
     blurRadius = 24.dp,
-    tint = HazeTint(Color(0xFF0B1426).copy(alpha = 0.72f)),
-    fallbackTint = HazeTint(Color(0xFF0B1426))
+    tint = HazeTint(SurfaceInset.copy(alpha = 0.72f)),
+    fallbackTint = HazeTint(SurfaceInset)
 )
 
 val HeaderGlassStyle = HazeStyle(
     blurRadius = 24.dp,
-    tint = HazeTint(Color(0xFF0B1426).copy(alpha = 0.72f)),
-    fallbackTint = HazeTint(Color(0xFF0B1426))
+    tint = HazeTint(SurfaceInset.copy(alpha = 0.72f)),
+    fallbackTint = HazeTint(SurfaceInset)
 )
 
 val CardGlassStyle = HazeStyle(
     blurRadius = 32.dp,
-    tint = HazeTint(Color(0xFF16233B).copy(alpha = 0.62f)),
+    tint = HazeTint(SurfaceHigh.copy(alpha = 0.62f)),
     noiseFactor = 0.04f,
-    fallbackTint = HazeTint(Color(0xFF16233B))
+    fallbackTint = HazeTint(SurfaceHigh)
 )
+
+@Composable
+fun rememberBottomBarGlassStyle(): HazeStyle {
+    val colors = com.github.premtechworks.synqvia.ui.theme.SynqviaTheme.colors
+    return if (colors.isDark) {
+        BottomBarGlassStyle
+    } else {
+        HazeStyle(
+            blurRadius = 24.dp,
+            tint = HazeTint(colors.glassTintBar),
+            fallbackTint = HazeTint(colors.navBarBg)
+        )
+    }
+}
+
+@Composable
+fun rememberHeaderGlassStyle(): HazeStyle {
+    val colors = com.github.premtechworks.synqvia.ui.theme.SynqviaTheme.colors
+    return if (colors.isDark) {
+        HeaderGlassStyle
+    } else {
+        HazeStyle(
+            blurRadius = 16.dp,
+            tint = HazeTint(colors.bgTop.copy(alpha = 0.85f)),
+            fallbackTint = HazeTint(colors.bgTop)
+        )
+    }
+}
+
+@Composable
+fun rememberCardGlassStyle(): HazeStyle {
+    val colors = com.github.premtechworks.synqvia.ui.theme.SynqviaTheme.colors
+    return if (colors.isDark) {
+        CardGlassStyle
+    } else {
+        HazeStyle(
+            blurRadius = 20.dp,
+            tint = HazeTint(colors.surface.copy(alpha = 0.94f)),
+            fallbackTint = HazeTint(colors.surface)
+        )
+    }
+}
 
 /**
  * Vertical 1dp border gradient for frosted glass cards (white 22% -> 6%).
@@ -88,6 +132,16 @@ val GlassCardBorderBrush = Brush.verticalGradient(
         Color.White.copy(alpha = 0.06f)
     )
 )
+
+@Composable
+fun rememberGlassCardBorderBrush(): Brush {
+    val isDark = com.github.premtechworks.synqvia.ui.theme.SynqviaTheme.isDark
+    return if (isDark) {
+        GlassCardBorderBrush
+    } else {
+        androidx.compose.ui.graphics.SolidColor(Color.White.copy(alpha = 0.80f))
+    }
+}
 
 /**
  * Soft drop shadow matching CSS: `0 24dp 48dp rgba(0, 0, 0, 0.45)`
@@ -125,7 +179,7 @@ fun Modifier.synqviaGlass(
     hazeState: HazeState?,
     style: HazeStyle,
     isBlurSupported: Boolean,
-    fallbackColor: Color = Color(0xFF16233B),
+    fallbackColor: Color = SurfaceHigh,
     shape: Shape? = null
 ): Modifier {
     val clipped = if (shape != null) this.clip(shape) else this
@@ -143,8 +197,8 @@ fun Modifier.synqviaGlass(
 fun LiquidGlassCard(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(16.dp),
-    backgroundColor: Color = SurfaceDark,
-    borderColor: Color = OutlineDark,
+    backgroundColor: Color = com.github.premtechworks.synqvia.ui.theme.SynqviaTheme.colors.surface,
+    borderColor: Color = com.github.premtechworks.synqvia.ui.theme.SynqviaTheme.colors.outline,
     borderWidth: Dp = 1.dp,
     elevation: Dp = 0.dp,
     content: @Composable BoxScope.() -> Unit
@@ -155,7 +209,7 @@ fun LiquidGlassCard(
             .background(backgroundColor)
             .border(borderWidth, borderColor, shape),
         color = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.onSurface
+        contentColor = com.github.premtechworks.synqvia.ui.theme.SynqviaTheme.colors.textPrimary
     ) {
         Box(content = content)
     }
@@ -197,8 +251,8 @@ fun GlowingStatusDot(
 fun GlassPillBadge(
     text: String,
     modifier: Modifier = Modifier,
-    accentColor: Color = PrimaryCyan,
-    textColor: Color = Color.White
+    accentColor: Color = com.github.premtechworks.synqvia.ui.theme.SynqviaTheme.colors.primary,
+    textColor: Color = com.github.premtechworks.synqvia.ui.theme.SynqviaTheme.colors.textPrimary
 ) {
     Box(
         modifier = modifier

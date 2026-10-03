@@ -30,10 +30,10 @@ import com.github.premtechworks.synqvia.R
  * Enter action rendering, and a 44dp toolbar with Clipboard history panel toggling.
  */
 class SynqviaKeyboardView @JvmOverloads constructor(
-    context: Context,
+    baseContext: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : LinearLayout(context, attrs, defStyleAttr) {
+) : LinearLayout(KeyboardPalette.ensureThemedContext(baseContext), attrs, defStyleAttr) {
 
     private val interTypeface by lazy {
         try {
@@ -116,10 +116,6 @@ class SynqviaKeyboardView @JvmOverloads constructor(
         btnClipboard = findViewById(R.id.btn_ime_clipboard)
         btnPinned = findViewById(R.id.btn_ime_pinned)
         btnPicker = findViewById(R.id.btn_ime_picker)
-
-        findViewById<TextView?>(R.id.tv_ime_brand)?.let {
-            applyInterFont(it, 15f, weight = 600, opsz = 15f)
-        }
 
         // Setup Key Preview Popup
         val previewView = LayoutInflater.from(context).inflate(R.layout.ime_key_preview, null)
@@ -205,24 +201,27 @@ class SynqviaKeyboardView @JvmOverloads constructor(
     }
 
     private fun updateToolbarButtons() {
+        val activeIconColor = KeyboardPalette.resolveThemeColor(context, R.attr.synqToolbarActiveIcon)
+        val inactiveIconColor = KeyboardPalette.resolveThemeColor(context, R.attr.synqToolbarIconInactive)
+
         if (isClipboardActive) {
             btnClipboard.setBackgroundResource(R.drawable.bg_ime_toolbar_button_active)
-            btnClipboard.setColorFilter(ContextCompat.getColor(context, R.color.ime_toolbar_btn_active_icon))
+            btnClipboard.setColorFilter(activeIconColor)
         } else {
             btnClipboard.setBackgroundResource(R.drawable.bg_ime_toolbar_button)
-            btnClipboard.setColorFilter(ContextCompat.getColor(context, R.color.ime_toolbar_btn_inactive_icon))
+            btnClipboard.setColorFilter(inactiveIconColor)
         }
 
         if (isClipboardActive && isPinnedFilterActive) {
             btnPinned.setBackgroundResource(R.drawable.bg_ime_toolbar_button_active)
-            btnPinned.setColorFilter(ContextCompat.getColor(context, R.color.ime_toolbar_btn_active_icon))
+            btnPinned.setColorFilter(activeIconColor)
         } else {
             btnPinned.setBackgroundResource(R.drawable.bg_ime_toolbar_button)
-            btnPinned.setColorFilter(ContextCompat.getColor(context, R.color.ime_toolbar_btn_inactive_icon))
+            btnPinned.setColorFilter(inactiveIconColor)
         }
 
         btnPicker.setBackgroundResource(R.drawable.bg_ime_toolbar_button)
-        btnPicker.setColorFilter(ContextCompat.getColor(context, R.color.ime_toolbar_btn_inactive_icon))
+        btnPicker.setColorFilter(inactiveIconColor)
     }
 
     fun setLayer(layer: KeyboardLayer) {
@@ -494,7 +493,7 @@ class SynqviaKeyboardView @JvmOverloads constructor(
             }
             gravity = Gravity.CENTER
             text = char
-            setTextColor(Color.WHITE)
+            setTextColor(KeyboardPalette.resolveThemeColor(context, R.attr.synqKeyText))
             applyInterFont(this, 20f, weight = 400, opsz = 20f)
             setBackgroundResource(R.drawable.bg_ime_key_letter)
             contentDescription = char
@@ -529,7 +528,7 @@ class SynqviaKeyboardView @JvmOverloads constructor(
                 setMarginEnd(4)
             }
             text = hint
-            setTextColor(ContextCompat.getColor(context, R.color.ime_key_hint))
+            setTextColor(KeyboardPalette.resolveThemeColor(context, R.attr.synqKeyHint))
             applyInterFont(this, 9f, weight = 500, opsz = 14f)
         }
         frame.addView(tvHint)
@@ -542,7 +541,7 @@ class SynqviaKeyboardView @JvmOverloads constructor(
             )
             gravity = Gravity.CENTER
             text = char
-            setTextColor(Color.WHITE)
+            setTextColor(KeyboardPalette.resolveThemeColor(context, R.attr.synqKeyText))
             applyInterFont(this, 20f, weight = 400, opsz = 20f)
         }
         frame.addView(tvMain)
@@ -564,7 +563,7 @@ class SynqviaKeyboardView @JvmOverloads constructor(
             }
             gravity = Gravity.CENTER
             this.text = text
-            setTextColor(Color.WHITE)
+            setTextColor(KeyboardPalette.resolveThemeColor(context, R.attr.synqKeyText))
             applyInterFont(this, 15f, weight = 500, opsz = 15f)
             setBackgroundResource(R.drawable.bg_ime_key_function)
             contentDescription = text
@@ -584,6 +583,7 @@ class SynqviaKeyboardView @JvmOverloads constructor(
             }
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             setImageResource(R.drawable.ic_ime_shift)
+            setColorFilter(KeyboardPalette.resolveThemeColor(context, R.attr.synqToolbarIconInactive))
             setBackgroundResource(R.drawable.bg_ime_key_function)
             contentDescription = "Shift"
             isClickable = true
@@ -605,6 +605,7 @@ class SynqviaKeyboardView @JvmOverloads constructor(
             layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, weight)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             setImageResource(R.drawable.ic_ime_backspace)
+            setColorFilter(KeyboardPalette.resolveThemeColor(context, R.attr.synqToolbarIconInactive))
             setBackgroundResource(R.drawable.bg_ime_key_function)
             contentDescription = "Backspace"
             isClickable = true
@@ -639,7 +640,7 @@ class SynqviaKeyboardView @JvmOverloads constructor(
             }
             gravity = Gravity.CENTER
             text = "Synqvia"
-            setTextColor(ContextCompat.getColor(context, R.color.ime_key_text_secondary))
+            setTextColor(KeyboardPalette.resolveThemeColor(context, R.attr.synqTextSecondary))
             applyInterFont(this, 13f, weight = 400, opsz = 14f)
             setBackgroundResource(R.drawable.bg_ime_key_letter)
             contentDescription = "Space"
@@ -670,6 +671,7 @@ class SynqviaKeyboardView @JvmOverloads constructor(
             layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, weight)
             scaleType = ImageView.ScaleType.CENTER_INSIDE
             setImageResource(enterAction.iconRes)
+            setColorFilter(KeyboardPalette.resolveThemeColor(context, R.attr.synqEnterIcon))
             setBackgroundResource(R.drawable.bg_ime_key_enter)
             contentDescription = "Enter"
             isClickable = true
@@ -704,6 +706,8 @@ class SynqviaKeyboardView @JvmOverloads constructor(
 
     private fun updateEnterKeyIcon() {
         ivEnterKey?.setImageResource(enterAction.iconRes)
+        val enterIconColor = KeyboardPalette.resolveThemeColor(context, R.attr.synqEnterIcon)
+        ivEnterKey?.setColorFilter(enterIconColor)
     }
 
     private fun updateShiftUI(state: ShiftState) {
@@ -715,17 +719,20 @@ class SynqviaKeyboardView @JvmOverloads constructor(
             }
         }
 
+        val activeColor = KeyboardPalette.resolveThemeColor(context, R.attr.synqToolbarActiveIcon)
+        val inactiveColor = KeyboardPalette.resolveThemeColor(context, R.attr.synqToolbarIconInactive)
         when (state) {
             ShiftState.CAPS_LOCKED -> {
                 ivShiftKey?.setImageResource(R.drawable.ic_ime_shift_locked)
+                ivShiftKey?.setColorFilter(activeColor)
             }
             ShiftState.ON -> {
                 ivShiftKey?.setImageResource(R.drawable.ic_ime_shift)
-                ivShiftKey?.setColorFilter(ContextCompat.getColor(context, R.color.ime_toolbar_btn_active_icon))
+                ivShiftKey?.setColorFilter(activeColor)
             }
             ShiftState.OFF -> {
                 ivShiftKey?.setImageResource(R.drawable.ic_ime_shift)
-                ivShiftKey?.clearColorFilter()
+                ivShiftKey?.setColorFilter(inactiveColor)
             }
         }
     }
